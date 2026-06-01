@@ -1,0 +1,40 @@
+---
+import MainLayout from '@/layouts/MainLayout.astro';
+import { getChapter, listStaticChapterPaths } from '@/db/queries';
+
+export async function getStaticPaths() {
+  const paths = await listStaticChapterPaths();
+
+  return paths.map((path) => ({ params: path }));
+}
+
+const { version, libro, capitulo } = Astro.params;
+const chapter = await getChapter({ version: version!, libro: libro!, capitulo: Number(capitulo) });
+
+if (!chapter) {
+  throw new Error(`No chapter found for ${version}/${libro}/${capitulo}.`);
+}
+---
+
+<MainLayout title={`TeoVerse | ${chapter.biblia.slug.toUpperCase()} ${chapter.libro.nombre} ${chapter.capitulo}`}>
+  <main class="min-h-screen bg-slate-50 p-6 text-slate-950 dark:bg-slate-950 dark:text-slate-100">
+    <article class="mx-auto max-w-3xl rounded-3xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <p class="text-sm font-medium uppercase text-indigo-600 dark:text-indigo-400">{chapter.biblia.slug}</p>
+      <h1 class="mt-2 text-3xl font-bold">{chapter.libro.nombre} {chapter.capitulo}</h1>
+
+      <ol class="mt-6 space-y-5 font-reading text-lg leading-8 text-slate-800 dark:text-slate-200">
+        {chapter.versiculos.map((versiculo) => (
+          <li class="grid grid-cols-[2rem_1fr] gap-3">
+            <span class="pt-1 text-sm font-bold text-indigo-600 dark:text-indigo-400">{versiculo.numero}</span>
+            <span>{versiculo.texto}</span>
+          </li>
+        ))}
+      </ol>
+
+      <p class="mt-6 rounded-2xl bg-indigo-50 p-4 text-sm text-indigo-950 dark:bg-indigo-950/40 dark:text-indigo-100">
+        Fuente: {chapter.biblia.nombre} ({chapter.biblia.slug}), {chapter.biblia.fuente}, licencia {chapter.biblia.licencia}.
+        <a class="font-semibold underline decoration-indigo-300 underline-offset-4" href="/atribuciones">Ver atribuciones</a>.
+      </p>
+    </article>
+  </main>
+</MainLayout>

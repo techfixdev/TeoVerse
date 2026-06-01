@@ -1,0 +1,45 @@
+{
+  "name": "teoverse",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "packageManager": "pnpm@11.1.1",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro check && astro build",
+    "preview": "astro preview",
+    "astro": "astro",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push --force",
+    "db:seed": "tsx src/db/seed.ts",
+    "verify": "pnpm verify:bible-queries && pnpm verify:usfm-parser && pnpm verify:usfm-importer && pnpm build",
+    "verify:bible-queries": "tsx scripts/verify-bible-queries.ts",
+    "verify:usfm-parser": "tsx scripts/verify-usfm-parser.ts",
+    "verify:usfm-importer": "tsx scripts/verify-usfm-importer.ts"
+  },
+  "dependencies": {
+    "@astrojs/tailwind": "^6.0.2",
+    "@astrojs/vercel": "^9.0.5",
+    "@libsql/client": "latest",
+    "astro": "^5.18.2",
+    "clsx": "latest",
+    "drizzle-orm": "latest",
+    "@lucide/astro": "latest",
+    "tailwind-merge": "latest"
+  },
+  "devDependencies": {
+    "@astrojs/check": "latest",
+    "@types/node": "latest",
+    "drizzle-kit": "latest",
+    "tailwindcss": "^3.4.19",
+    "tsx": "latest",
+    "typescript": "latest"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp"
+    ]
+  }
+}

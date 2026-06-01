@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.astro/
+.vercel/
+local.db
+local.db-*
+package-lock.json
+.env
+.env.*
+!.env.example
+
+# Full approved Bible source drops stay local. Keep fixtures/usfm tracked.
+fuentes-aprobadas/
+sources/
