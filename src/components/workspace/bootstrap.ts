@@ -17,17 +17,18 @@
  * The script is intentionally compact (no external deps, no bundling).
  */
 
-const WORKSPACE_KEY = 'teoverse.workspace.v1';
+import { WORKSPACE_KEY } from '@/stores/workspace';
 
 /**
  * Inline script string to be injected in `<head>` before first paint.
  *
  * What it does:
  * 1. Reads `localStorage[WORKSPACE_KEY]` and parses it as JSON.
- * 2. For each module in `estado.modulos`, applies a CSS class on `<html>`:
- *    - `ws-{id}-open`   when the module is `habilitado && abierto`
- *    - `ws-{id}-closed` when the module is `habilitado && !abierto`
- *    - `ws-{id}-min`    when the module is `habilitado && modo === 'minimizado'`
+ * 2. For each module in `estado.modulos`, applies CSS classes on `<html>`:
+ *    - `ws-{id}-closed` when `modo === 'cerrado'`
+ *    - `ws-{id}-open`   when `modo` is any other value (module is open)
+ *    - `ws-{id}-min`    additionally when `modo === 'minimizado'`
+ *    - `ws-{id}-max`    additionally when `modo === 'maximizado'`
  * 3. Applies `ws-workspace-ready` to `<html>` so CSS can show the workspace
  *    chrome only after state is known (avoids unstyled flash).
  *
@@ -48,9 +49,13 @@ export const bootstrapScript: string = `(function(){
           var id = ids[i];
           var m = modulos[id];
           if (!m || !m.habilitado) continue;
-          html.classList.add('ws-' + id + (m.abierto ? '-open' : '-closed'));
-          if (m.modo === 'minimizado') html.classList.add('ws-' + id + '-min');
-          if (m.modo === 'maximizado') html.classList.add('ws-' + id + '-max');
+          if (m.modo === 'cerrado') {
+            html.classList.add('ws-' + id + '-closed');
+          } else {
+            html.classList.add('ws-' + id + '-open');
+            if (m.modo === 'minimizado') html.classList.add('ws-' + id + '-min');
+            if (m.modo === 'maximizado') html.classList.add('ws-' + id + '-max');
+          }
         }
       }
     }
