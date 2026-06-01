@@ -22,14 +22,17 @@ import { persistentJSON } from '@nanostores/persistent';
 // Types
 // ---------------------------------------------------------------------------
 
-export type ModoVisual = 'minimizado' | 'normal' | 'maximizado';
+export type ModoVisual = 'cerrado' | 'minimizado' | 'normal' | 'maximizado';
 
 export interface EstadoModulo {
   /** Whether the module is in the user's active workspace. */
   habilitado: boolean;
-  /** Whether the module's content pane is expanded (not minimized). */
-  abierto: boolean;
-  /** Visual display mode for the module panel/tab. */
+  /**
+   * Visual display mode for the module panel/tab.
+   * `'cerrado'` means the module is closed (collapsed); any other value means
+   * it is open. Use `modo` to express open/closed — there is no separate
+   * `abierto` flag.
+   */
   modo: ModoVisual;
   /** Display order within the workspace (lower = first). */
   orden: number;
@@ -45,13 +48,12 @@ export interface EstadoWorkspace {
 // Default state
 // ---------------------------------------------------------------------------
 
-const WORKSPACE_KEY = 'teoverse.workspace.v1';
+export const WORKSPACE_KEY = 'teoverse.workspace.v1';
 
 const defaultEstado: EstadoWorkspace = {
   modulos: {
     lectura: {
       habilitado: true,
-      abierto: true,
       modo: 'normal',
       orden: 0,
     },
@@ -81,7 +83,7 @@ export const $workspace = persistentJSON<EstadoWorkspace>(WORKSPACE_KEY, default
 
 /** Read current workspace state safely (returns default if not yet hydrated). */
 export function getWorkspace(): EstadoWorkspace {
-  return $workspace.get() ?? defaultEstado;
+  return $workspace.get();
 }
 
 /** Update a single module's state without touching others. */
@@ -93,7 +95,7 @@ export function actualizarModulo(id: string, patch: Partial<EstadoModulo>): void
     modulos: {
       ...current.modulos,
       [id]: {
-        ...(moduloActual ?? { habilitado: false, abierto: false, modo: 'normal', orden: 99 }),
+        ...(moduloActual ?? { habilitado: false, modo: 'normal', orden: 99 }),
         ...patch,
       },
     },
