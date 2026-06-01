@@ -1,3 +1,19 @@
+export type UsfmToken = {
+  posicion: number;
+  palabra: string;
+  codigoStrong: string | null;
+};
+
+export type UsfmVerseWithTokens = {
+  chapter: number;
+  verse: number;
+  tokens: UsfmToken[];
+};
+
+export type ParsedUsfmBookInterlinear = {
+  verses: UsfmVerseWithTokens[];
+};
+
 export type UsfmBookMetadata = {
   id: string;
   toc1: string;
@@ -76,6 +92,80 @@ export function parseUsfmBook(usfm: string): ParsedUsfmBook {
     book: book as UsfmBookMetadata,
     verses,
   };
+}
+
+/**
+ * Parses USFM source into per-verse interlinear token lists (word + Strong code).
+ * Handles both \w and \+w variants (the latter appears inside \wj spans).
+ * Words without a strong= attribute yield codigoStrong: null.
+ * Does NOT modify cleanUsfmText — the plain-text import path is byte-identical.
+ */
+export function parseUsfmBookInterlinear(usfm: string): ParsedUsfmBookInterlinear {
+  const verses: UsfmVerseWithTokens[] = [];
+  let currentChapter: number | undefined;
+  let currentVerse: UsfmVerseWithTokens | undefined;
+
+  // Regex captures \w or \+w markers with their surface text and optional attributes.
+  // Format: \w surface|strong="HXXXX"\w*  or  \+w surface|strong="HXXXX"\+w*
+  const wTokenRe = /\\\+?w\s+([^|\\]+?)(?:\|([^\\]*))?\\\+?w\*/g;
+
+  for (const rawLine of usfm.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    const chapterMatch = line.match(/^\\c\s+(\d+)/);
+    if (chapterMatch) {
+      currentChapter = Number(chapterMatch[1]);
+      currentVerse = undefined;
+      continue;
+    }
+
+    const verseMatch = line.match(/^\\v\s+(\d+)[a-z]?(?:-\d+)?\s*(.*)/i);
+    if (verseMatch) {
+      if (currentChapter === undefined) continue;
+      currentVerse = {
+        chapter: currentChapter,
+        verse: Number(verseMatch[1]),
+        tokens: extractTokens(verseMatch[2], wTokenRe),
+      };
+      verses.push(currentVerse);
+      continue;
+    }
+
+    // Continuation lines (poetry, paragraph markers) — append tokens
+    if (currentVerse && shouldAppendToVerse(line)) {
+      const extra = extractTokens(line, wTokenRe);
+      if (extra.length > 0) {
+        const offset = currentVerse.tokens.length;
+        for (const token of extra) {
+          currentVerse.tokens.push({ ...token, posicion: token.posicion + offset });
+        }
+      }
+    }
+  }
+
+  return { verses };
+}
+
+function extractTokens(text: string, re: RegExp): UsfmToken[] {
+  re.lastIndex = 0;
+  const tokens: UsfmToken[] = [];
+  let posicion = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = re.exec(text)) !== null) {
+    const palabra = match[1].trim();
+    const attrs = match[2] ?? '';
+    // Attribute format: strong="H7225" (may also be strong:H7225 in some editions)
+    const strongMatch = attrs.match(/strong[=:"]+([A-Za-z][0-9]+)/);
+    const codigoStrong = strongMatch ? strongMatch[1] : null;
+    if (palabra) {
+      tokens.push({ posicion, palabra, codigoStrong });
+      posicion++;
+    }
+  }
+
+  return tokens;
 }
 
 function normalizeText(text: string): string {
