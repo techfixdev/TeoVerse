@@ -1,6 +1,6 @@
 import { and, asc, eq } from 'drizzle-orm';
 import { db } from './client';
-import { biblias, libros, versiculos } from './schema';
+import { recursos, recursoLibros, libros, versiculos } from './schema';
 
 export type StaticChapterPath = {
   version: string;
@@ -14,6 +14,7 @@ export type ChapterVerse = {
 };
 
 export type Chapter = {
+  // TODO: rename chapter.biblia.* → chapter.recurso.* in a follow-up PR (compat shim; sourced from recursos table)
   biblia: {
     slug: string;
     nombre: string;
@@ -85,15 +86,17 @@ type ChapterReference = {
 export async function listStaticChapterPaths(): Promise<StaticChapterPath[]> {
   const rows = await db
     .select({
-      version: biblias.slug,
+      version: recursos.slug,
       libro: libros.slug,
       capitulo: versiculos.capitulo,
     })
     .from(versiculos)
-    .innerJoin(biblias, eq(versiculos.bibliaId, biblias.id))
+    .innerJoin(recursos, eq(versiculos.recursoId, recursos.id))
     .innerJoin(libros, eq(versiculos.libroId, libros.id))
-    .groupBy(biblias.slug, libros.slug, versiculos.capitulo)
-    .orderBy(asc(biblias.slug), asc(libros.orden), asc(versiculos.capitulo));
+    .innerJoin(recursoLibros, and(eq(recursoLibros.recursoId, recursos.id), eq(recursoLibros.libroId, libros.id)))
+    .where(eq(recursos.tipo, 'biblia'))
+    .groupBy(recursos.slug, libros.slug, versiculos.capitulo)
+    .orderBy(asc(recursos.slug), asc(recursoLibros.orden), asc(versiculos.capitulo));
 
   return rows.map((row) => ({
     version: row.version,
@@ -105,10 +108,12 @@ export async function listStaticChapterPaths(): Promise<StaticChapterPath[]> {
 export async function getChapter(reference: ChapterReference): Promise<Chapter | null> {
   const rows = await db
     .select({
-      bibliaSlug: biblias.slug,
-      bibliaNombre: biblias.nombre,
-      bibliaLicencia: biblias.licencia,
-      bibliaFuente: biblias.fuente,
+      // compat shim: fields named biblia.* but sourced from recursos table
+      // TODO: rename chapter.biblia.* → chapter.recurso.* in a follow-up PR
+      bibliaSlug: recursos.slug,
+      bibliaNombre: recursos.nombre,
+      bibliaLicencia: recursos.licencia,
+      bibliaFuente: recursos.fuente,
       libroSlug: libros.slug,
       libroNombre: libros.nombre,
       capitulo: versiculos.capitulo,
@@ -116,11 +121,12 @@ export async function getChapter(reference: ChapterReference): Promise<Chapter |
       texto: versiculos.texto,
     })
     .from(versiculos)
-    .innerJoin(biblias, eq(versiculos.bibliaId, biblias.id))
+    .innerJoin(recursos, eq(versiculos.recursoId, recursos.id))
     .innerJoin(libros, eq(versiculos.libroId, libros.id))
     .where(
       and(
-        eq(biblias.slug, reference.version),
+        eq(recursos.tipo, 'biblia'),
+        eq(recursos.slug, reference.version),
         eq(libros.slug, reference.libro),
         eq(versiculos.capitulo, reference.capitulo),
       ),
@@ -153,16 +159,19 @@ export async function getHomeChapter(): Promise<Chapter | null> {
 export async function getChapterNavigation(reference: ChapterReference): Promise<ChapterNavigation | null> {
   const rows = await db
     .select({
-      version: biblias.slug,
+      version: recursos.slug,
       libro: libros.slug,
       libroNombre: libros.nombre,
+      libroOrden: recursoLibros.orden,
       capitulo: versiculos.capitulo,
     })
     .from(versiculos)
-    .innerJoin(biblias, eq(versiculos.bibliaId, biblias.id))
+    .innerJoin(recursos, eq(versiculos.recursoId, recursos.id))
     .innerJoin(libros, eq(versiculos.libroId, libros.id))
-    .groupBy(biblias.slug, libros.orden, libros.slug, libros.nombre, versiculos.capitulo)
-    .orderBy(asc(biblias.slug), asc(libros.orden), asc(versiculos.capitulo));
+    .innerJoin(recursoLibros, and(eq(recursoLibros.recursoId, recursos.id), eq(recursoLibros.libroId, libros.id)))
+    .where(eq(recursos.tipo, 'biblia'))
+    .groupBy(recursos.slug, recursoLibros.orden, libros.slug, libros.nombre, versiculos.capitulo)
+    .orderBy(asc(recursos.slug), asc(recursoLibros.orden), asc(versiculos.capitulo));
 
   const links = rows.map((row) => ({
     version: row.version,
@@ -189,17 +198,20 @@ export async function getChapterNavigation(reference: ChapterReference): Promise
 export async function listBibleLibrary(): Promise<BibleLibraryVersion[]> {
   const rows = await db
     .select({
-      version: biblias.slug,
-      versionNombre: biblias.nombre,
+      version: recursos.slug,
+      versionNombre: recursos.nombre,
       libro: libros.slug,
       libroNombre: libros.nombre,
+      libroOrden: recursoLibros.orden,
       capitulo: versiculos.capitulo,
     })
     .from(versiculos)
-    .innerJoin(biblias, eq(versiculos.bibliaId, biblias.id))
+    .innerJoin(recursos, eq(versiculos.recursoId, recursos.id))
     .innerJoin(libros, eq(versiculos.libroId, libros.id))
-    .groupBy(biblias.slug, biblias.nombre, libros.orden, libros.slug, libros.nombre, versiculos.capitulo)
-    .orderBy(asc(biblias.slug), asc(libros.orden), asc(versiculos.capitulo));
+    .innerJoin(recursoLibros, and(eq(recursoLibros.recursoId, recursos.id), eq(recursoLibros.libroId, libros.id)))
+    .where(eq(recursos.tipo, 'biblia'))
+    .groupBy(recursos.slug, recursos.nombre, recursoLibros.orden, libros.slug, libros.nombre, versiculos.capitulo)
+    .orderBy(asc(recursos.slug), asc(recursoLibros.orden), asc(versiculos.capitulo));
 
   const library: BibleLibraryVersion[] = [];
 
@@ -230,20 +242,21 @@ export async function listBibleLibrary(): Promise<BibleLibraryVersion[]> {
 export async function listBibleAttributions(): Promise<BibleAttribution[]> {
   return db
     .select({
-      slug: biblias.slug,
-      nombre: biblias.nombre,
-      idioma: biblias.idioma,
-      licencia: biblias.licencia,
-      fuente: biblias.fuente,
+      slug: recursos.slug,
+      nombre: recursos.nombre,
+      idioma: recursos.idioma,
+      licencia: recursos.licencia,
+      fuente: recursos.fuente,
     })
-    .from(biblias)
-    .orderBy(asc(biblias.slug));
+    .from(recursos)
+    .where(eq(recursos.tipo, 'biblia'))
+    .orderBy(asc(recursos.slug));
 }
 
 export async function listSearchDocuments(): Promise<SearchDocument[]> {
   const rows = await db
     .select({
-      version: biblias.slug,
+      version: recursos.slug,
       book: libros.nombre,
       bookSlug: libros.slug,
       chapter: versiculos.capitulo,
@@ -251,9 +264,11 @@ export async function listSearchDocuments(): Promise<SearchDocument[]> {
       text: versiculos.texto,
     })
     .from(versiculos)
-    .innerJoin(biblias, eq(versiculos.bibliaId, biblias.id))
+    .innerJoin(recursos, eq(versiculos.recursoId, recursos.id))
     .innerJoin(libros, eq(versiculos.libroId, libros.id))
-    .orderBy(asc(biblias.slug), asc(libros.orden), asc(versiculos.capitulo), asc(versiculos.versiculo));
+    .innerJoin(recursoLibros, and(eq(recursoLibros.recursoId, recursos.id), eq(recursoLibros.libroId, libros.id)))
+    .where(eq(recursos.tipo, 'biblia'))
+    .orderBy(asc(recursos.slug), asc(recursoLibros.orden), asc(versiculos.capitulo), asc(versiculos.versiculo));
 
   return rows.map((row) => ({
     version: row.version,
