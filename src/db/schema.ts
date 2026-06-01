@@ -1,8 +1,11 @@
 import { relations } from 'drizzle-orm';
 import { integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
-export const biblias = sqliteTable('biblias', {
+export const recursos = sqliteTable('recursos', {
   id: integer('id').primaryKey({ autoIncrement: true }),
+  tipo: text('tipo', {
+    enum: ['biblia', 'diccionario', 'comentario', 'referencias', 'mapa', 'estudio', 'teologia'],
+  }).notNull(),
   slug: text('slug').notNull().unique(),
   nombre: text('nombre').notNull(),
   idioma: text('idioma').notNull(),
@@ -18,18 +21,36 @@ export const libros = sqliteTable(
     nombre: text('nombre').notNull(),
     slug: text('slug').notNull(),
     abreviatura: text('abreviatura').notNull(),
+    // NOTE: global `orden` column removed — book order is per-resource via recurso_libros
+  },
+  (table) => [uniqueIndex('libros_slug_idx').on(table.slug)],
+);
+
+export const recursoLibros = sqliteTable(
+  'recurso_libros',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    recursoId: integer('recurso_id')
+      .notNull()
+      .references(() => recursos.id, { onDelete: 'cascade' }),
+    libroId: integer('libro_id')
+      .notNull()
+      .references(() => libros.id, { onDelete: 'cascade' }),
     orden: integer('orden').notNull(),
   },
-  (table) => [uniqueIndex('libros_orden_idx').on(table.orden), uniqueIndex('libros_slug_idx').on(table.slug)],
+  (table) => [
+    uniqueIndex('recurso_libros_orden_idx').on(table.recursoId, table.orden),
+    uniqueIndex('recurso_libros_libro_idx').on(table.recursoId, table.libroId),
+  ],
 );
 
 export const versiculos = sqliteTable(
   'versiculos',
   {
     id: integer('id').primaryKey({ autoIncrement: true }),
-    bibliaId: integer('biblia_id')
+    recursoId: integer('recurso_id')
       .notNull()
-      .references(() => biblias.id, { onDelete: 'cascade' }),
+      .references(() => recursos.id, { onDelete: 'cascade' }),
     libroId: integer('libro_id')
       .notNull()
       .references(() => libros.id, { onDelete: 'cascade' }),
@@ -38,38 +59,60 @@ export const versiculos = sqliteTable(
     texto: text('texto').notNull(),
   },
   (table) => [
-    uniqueIndex('versiculos_referencia_idx').on(
-      table.bibliaId,
-      table.libroId,
-      table.capitulo,
-      table.versiculo,
-    ),
+    uniqueIndex('versiculos_referencia_idx').on(table.recursoId, table.libroId, table.capitulo, table.versiculo),
   ],
 );
 
-export const diccionario = sqliteTable(
-  'diccionario',
+export const diccionarioEntradas = sqliteTable(
+  'diccionario_entradas',
   {
     id: integer('id').primaryKey({ autoIncrement: true }),
+    recursoId: integer('recurso_id')
+      .notNull()
+      .references(() => recursos.id, { onDelete: 'cascade' }),
     codigoStrong: text('codigo_strong').notNull(),
-    palabra: text('palabra').notNull(),
+    lema: text('lema').notNull(),
     definicion: text('definicion').notNull(),
   },
-  (table) => [uniqueIndex('diccionario_codigo_strong_idx').on(table.codigoStrong)],
+  (table) => [uniqueIndex('diccionario_entradas_idx').on(table.recursoId, table.codigoStrong)],
 );
 
-export const bibliasRelations = relations(biblias, ({ many }) => ({ versiculos: many(versiculos) }));
-export const librosRelations = relations(libros, ({ many }) => ({ versiculos: many(versiculos) }));
+// Relations
+
+export const recursosRelations = relations(recursos, ({ many }) => ({
+  recursoLibros: many(recursoLibros),
+  versiculos: many(versiculos),
+  diccionarioEntradas: many(diccionarioEntradas),
+}));
+
+export const librosRelations = relations(libros, ({ many }) => ({
+  recursoLibros: many(recursoLibros),
+  versiculos: many(versiculos),
+}));
+
+export const recursoLibrosRelations = relations(recursoLibros, ({ one }) => ({
+  recurso: one(recursos, { fields: [recursoLibros.recursoId], references: [recursos.id] }),
+  libro: one(libros, { fields: [recursoLibros.libroId], references: [libros.id] }),
+}));
+
 export const versiculosRelations = relations(versiculos, ({ one }) => ({
-  biblia: one(biblias, { fields: [versiculos.bibliaId], references: [biblias.id] }),
+  recurso: one(recursos, { fields: [versiculos.recursoId], references: [recursos.id] }),
   libro: one(libros, { fields: [versiculos.libroId], references: [libros.id] }),
 }));
 
-export type Biblia = typeof biblias.$inferSelect;
-export type NuevaBiblia = typeof biblias.$inferInsert;
+export const diccionarioEntradasRelations = relations(diccionarioEntradas, ({ one }) => ({
+  recurso: one(recursos, { fields: [diccionarioEntradas.recursoId], references: [recursos.id] }),
+}));
+
+// Inferred types
+
+export type Recurso = typeof recursos.$inferSelect;
+export type NuevoRecurso = typeof recursos.$inferInsert;
 export type Libro = typeof libros.$inferSelect;
 export type NuevoLibro = typeof libros.$inferInsert;
+export type RecursoLibro = typeof recursoLibros.$inferSelect;
+export type NuevoRecursoLibro = typeof recursoLibros.$inferInsert;
 export type Versiculo = typeof versiculos.$inferSelect;
 export type NuevoVersiculo = typeof versiculos.$inferInsert;
-export type EntradaDiccionario = typeof diccionario.$inferSelect;
-export type NuevaEntradaDiccionario = typeof diccionario.$inferInsert;
+export type EntradaDiccionario = typeof diccionarioEntradas.$inferSelect;
+export type NuevaEntradaDiccionario = typeof diccionarioEntradas.$inferInsert;
