@@ -1,5 +1,7 @@
 # TeoVerse
 
+[![CI](https://github.com/techfixdev/TeoVerse/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/techfixdev/TeoVerse/actions/workflows/ci.yml)
+
 TeoVerse is a static Astro 5 Bible reading site focused on approved Spanish Bible content, visible attribution, and safe local import workflows. It builds static pages with Astro, Tailwind, Drizzle ORM, and a LibSQL-compatible local fallback.
 
 ## Quick Path
