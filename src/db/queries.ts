@@ -59,6 +59,23 @@ export type ChapterNavigation = {
   next: ChapterNavigationLink | null;
 };
 
+export type BibleLibraryChapter = {
+  capitulo: number;
+  href: string;
+};
+
+export type BibleLibraryBook = {
+  slug: string;
+  nombre: string;
+  chapters: BibleLibraryChapter[];
+};
+
+export type BibleLibraryVersion = {
+  slug: string;
+  nombre: string;
+  books: BibleLibraryBook[];
+};
+
 type ChapterReference = {
   version: string;
   libro: string;
@@ -167,6 +184,47 @@ export async function getChapterNavigation(reference: ChapterReference): Promise
     previous: links[currentIndex - 1] ?? null,
     next: links[currentIndex + 1] ?? null,
   };
+}
+
+export async function listBibleLibrary(): Promise<BibleLibraryVersion[]> {
+  const rows = await db
+    .select({
+      version: biblias.slug,
+      versionNombre: biblias.nombre,
+      libro: libros.slug,
+      libroNombre: libros.nombre,
+      capitulo: versiculos.capitulo,
+    })
+    .from(versiculos)
+    .innerJoin(biblias, eq(versiculos.bibliaId, biblias.id))
+    .innerJoin(libros, eq(versiculos.libroId, libros.id))
+    .groupBy(biblias.slug, biblias.nombre, libros.orden, libros.slug, libros.nombre, versiculos.capitulo)
+    .orderBy(asc(biblias.slug), asc(libros.orden), asc(versiculos.capitulo));
+
+  const library: BibleLibraryVersion[] = [];
+
+  for (const row of rows) {
+    let version = library.find((entry) => entry.slug === row.version);
+
+    if (!version) {
+      version = { slug: row.version, nombre: row.versionNombre, books: [] };
+      library.push(version);
+    }
+
+    let book = version.books.find((entry) => entry.slug === row.libro);
+
+    if (!book) {
+      book = { slug: row.libro, nombre: row.libroNombre, chapters: [] };
+      version.books.push(book);
+    }
+
+    book.chapters.push({
+      capitulo: row.capitulo,
+      href: `/biblia/${row.version}/${row.libro}/${row.capitulo}/`,
+    });
+  }
+
+  return library;
 }
 
 export async function listBibleAttributions(): Promise<BibleAttribution[]> {

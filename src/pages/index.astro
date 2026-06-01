@@ -23,6 +23,10 @@ const chapterHref = `/biblia/${chapter.biblia.slug}/${chapter.libro.slug}/${chap
             <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400">
               Base inicial con {chapter.biblia.nombre} ({chapter.biblia.slug}), fuente eBible.org bajo CC BY 4.0.
             </p>
+            <a class="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 underline decoration-indigo-200 underline-offset-4 dark:text-indigo-300" href="/biblia">
+              <Library class="h-4 w-4" aria-hidden="true" />
+              Ver biblioteca bíblica
+            </a>
           </div>
 
           <form action="/buscar" class="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-950 lg:w-96" role="search">

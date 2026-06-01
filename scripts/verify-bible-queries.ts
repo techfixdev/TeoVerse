@@ -2,6 +2,7 @@ import {
   getChapter,
   getChapterNavigation,
   getHomeChapter,
+  listBibleLibrary,
   listBibleAttributions,
   listStaticChapterPaths,
 } from '../src/db/queries';
@@ -58,6 +59,37 @@ async function verifyBibleQueries() {
 
   if (navigation.next !== null) {
     throw new Error('Expected seeded Genesis 1 to have no next chapter navigation link.');
+  }
+
+  const library = await listBibleLibrary();
+  const spapddptLibrary = library.find((version) => version.slug === 'spapddpt');
+
+  if (!spapddptLibrary) {
+    throw new Error('Expected listBibleLibrary to include spapddpt.');
+  }
+
+  if (spapddptLibrary.nombre !== 'Palabra de Dios para ti') {
+    throw new Error(`Expected spapddpt library name Palabra de Dios para ti, got ${spapddptLibrary.nombre}.`);
+  }
+
+  const genesisLibrary = spapddptLibrary.books.find((book) => book.slug === 'genesis');
+
+  if (!genesisLibrary) {
+    throw new Error('Expected spapddpt library to include Genesis.');
+  }
+
+  if (genesisLibrary.nombre !== 'Génesis') {
+    throw new Error(`Expected Genesis library name Génesis, got ${genesisLibrary.nombre}.`);
+  }
+
+  const genesisChapter = genesisLibrary.chapters.find((chapterLink) => chapterLink.capitulo === 1);
+
+  if (!genesisChapter) {
+    throw new Error('Expected Genesis library entry to include chapter 1.');
+  }
+
+  if (genesisChapter.href !== '/biblia/spapddpt/genesis/1/') {
+    throw new Error(`Expected Genesis 1 library href /biblia/spapddpt/genesis/1/, got ${genesisChapter.href}.`);
   }
 
   const homeChapter = await getHomeChapter();
