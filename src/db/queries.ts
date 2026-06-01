@@ -36,6 +36,15 @@ export type BibleAttribution = {
   fuente: string;
 };
 
+export type SearchDocument = {
+  version: string;
+  book: string;
+  chapter: number;
+  verse: number;
+  text: string;
+  href: string;
+};
+
 type ChapterReference = {
   version: string;
   libro: string;
@@ -121,4 +130,29 @@ export async function listBibleAttributions(): Promise<BibleAttribution[]> {
     })
     .from(biblias)
     .orderBy(asc(biblias.slug));
+}
+
+export async function listSearchDocuments(): Promise<SearchDocument[]> {
+  const rows = await db
+    .select({
+      version: biblias.slug,
+      book: libros.nombre,
+      bookSlug: libros.slug,
+      chapter: versiculos.capitulo,
+      verse: versiculos.versiculo,
+      text: versiculos.texto,
+    })
+    .from(versiculos)
+    .innerJoin(biblias, eq(versiculos.bibliaId, biblias.id))
+    .innerJoin(libros, eq(versiculos.libroId, libros.id))
+    .orderBy(asc(biblias.slug), asc(libros.orden), asc(versiculos.capitulo), asc(versiculos.versiculo));
+
+  return rows.map((row) => ({
+    version: row.version,
+    book: row.book,
+    chapter: row.chapter,
+    verse: row.verse,
+    text: row.text,
+    href: `/biblia/${row.version}/${row.bookSlug}/${row.chapter}/#v${row.verse}`,
+  }));
 }
