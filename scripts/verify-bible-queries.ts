@@ -1,4 +1,10 @@
-import { getChapter, getHomeChapter, listBibleAttributions, listStaticChapterPaths } from '../src/db/queries';
+import {
+  getChapter,
+  getChapterNavigation,
+  getHomeChapter,
+  listBibleAttributions,
+  listStaticChapterPaths,
+} from '../src/db/queries';
 
 async function verifyBibleQueries() {
   const paths = await listStaticChapterPaths();
@@ -30,6 +36,28 @@ async function verifyBibleQueries() {
 
   if (chapter.versiculos[0]?.texto !== 'En un principio ʼElohim creó los cielos y la tierra.') {
     throw new Error('Expected Genesis 1:1 seeded text to come from the database.');
+  }
+
+  const navigation = await getChapterNavigation({ version: 'spapddpt', libro: 'genesis', capitulo: 1 });
+
+  if (!navigation) {
+    throw new Error('Expected getChapterNavigation to return navigation metadata for Genesis 1.');
+  }
+
+  if (navigation.current.href !== '/biblia/spapddpt/genesis/1/') {
+    throw new Error(`Expected current chapter href /biblia/spapddpt/genesis/1/, got ${navigation.current.href}.`);
+  }
+
+  if (navigation.current.label !== 'Génesis 1') {
+    throw new Error(`Expected current chapter label Génesis 1, got ${navigation.current.label}.`);
+  }
+
+  if (navigation.previous !== null) {
+    throw new Error('Expected seeded Genesis 1 to have no previous chapter navigation link.');
+  }
+
+  if (navigation.next !== null) {
+    throw new Error('Expected seeded Genesis 1 to have no next chapter navigation link.');
   }
 
   const homeChapter = await getHomeChapter();

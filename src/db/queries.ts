@@ -45,6 +45,20 @@ export type SearchDocument = {
   href: string;
 };
 
+export type ChapterNavigationLink = {
+  version: string;
+  libro: string;
+  capitulo: number;
+  label: string;
+  href: string;
+};
+
+export type ChapterNavigation = {
+  current: ChapterNavigationLink;
+  previous: ChapterNavigationLink | null;
+  next: ChapterNavigationLink | null;
+};
+
 type ChapterReference = {
   version: string;
   libro: string;
@@ -117,6 +131,42 @@ export async function getChapter(reference: ChapterReference): Promise<Chapter |
 
 export async function getHomeChapter(): Promise<Chapter | null> {
   return getChapter({ version: 'spapddpt', libro: 'genesis', capitulo: 1 });
+}
+
+export async function getChapterNavigation(reference: ChapterReference): Promise<ChapterNavigation | null> {
+  const rows = await db
+    .select({
+      version: biblias.slug,
+      libro: libros.slug,
+      libroNombre: libros.nombre,
+      capitulo: versiculos.capitulo,
+    })
+    .from(versiculos)
+    .innerJoin(biblias, eq(versiculos.bibliaId, biblias.id))
+    .innerJoin(libros, eq(versiculos.libroId, libros.id))
+    .groupBy(biblias.slug, libros.orden, libros.slug, libros.nombre, versiculos.capitulo)
+    .orderBy(asc(biblias.slug), asc(libros.orden), asc(versiculos.capitulo));
+
+  const links = rows.map((row) => ({
+    version: row.version,
+    libro: row.libro,
+    capitulo: row.capitulo,
+    label: `${row.libroNombre} ${row.capitulo}`,
+    href: `/biblia/${row.version}/${row.libro}/${row.capitulo}/`,
+  }));
+
+  const currentIndex = links.findIndex(
+    (link) =>
+      link.version === reference.version && link.libro === reference.libro && link.capitulo === reference.capitulo,
+  );
+
+  if (currentIndex === -1) return null;
+
+  return {
+    current: links[currentIndex],
+    previous: links[currentIndex - 1] ?? null,
+    next: links[currentIndex + 1] ?? null,
+  };
 }
 
 export async function listBibleAttributions(): Promise<BibleAttribution[]> {
