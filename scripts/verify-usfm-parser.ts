@@ -26,6 +26,29 @@ async function verifyUsfmParser() {
     'Expected parser to keep verse text.',
   );
   assertEqual(parsed.verses[4]?.verse, 5, 'Expected final fixture verse number to be 5.');
+
+  const realistic = parseUsfmBook(String.raw`\id JHN
+\toc1 Juan
+\toc2 Juan
+\toc3 Jn
+\c 3
+\p
+\v 16 Porque de tal manera amó Dios al mundo\f + \ft nota omitida\f*, que dio a su Hijo unigénito,
+\q1 para que todo el que cree en Él no perezca,
+\q2 sino que tenga vida eterna. \wj Palabras limpias\wj*
+\s1 Encabezado que no debe entrar al versículo
+\v 17 Porque Dios no envió a su Hijo al mundo para condenar al mundo.`);
+
+  assertEqual(realistic.book.id, 'JHN', 'Expected parser to read realistic USFM book id.');
+  assertEqual(realistic.book.toc1, 'Juan', 'Expected parser to read realistic toc1.');
+  assertEqual(realistic.verses.length, 2, 'Expected parser to join wrapped verse text without importing paragraph lines as verses.');
+  assertEqual(realistic.verses[0]?.chapter, 3, 'Expected realistic first verse to stay in chapter 3.');
+  assertEqual(realistic.verses[0]?.verse, 16, 'Expected realistic first verse number to be 16.');
+  assertEqual(
+    realistic.verses[0]?.text,
+    'Porque de tal manera amó Dios al mundo, que dio a su Hijo unigénito, para que todo el que cree en Él no perezca, sino que tenga vida eterna. Palabras limpias',
+    'Expected parser to strip footnotes and character markers while joining wrapped verse lines.',
+  );
 }
 
 verifyUsfmParser().catch((error) => {

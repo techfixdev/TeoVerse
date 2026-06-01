@@ -14,6 +14,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push --force",
     "db:seed": "tsx src/db/seed.ts",
+    "import:spapddpt": "tsx scripts/import-spapddpt.ts",
     "prepare:build-data": "tsx scripts/prepare-build-data.ts",
     "verify": "pnpm prepare:build-data && pnpm verify:bible-queries && pnpm verify:search-index && pnpm verify:usfm-parser && pnpm verify:usfm-importer && pnpm build:astro",
     "verify:bible-queries": "tsx scripts/verify-bible-queries.ts",
@@ -25,10 +26,11 @@
     "@astrojs/tailwind": "^6.0.2",
     "@astrojs/vercel": "^9.0.5",
     "@libsql/client": "latest",
+    "@lucide/astro": "latest",
     "astro": "^5.18.2",
     "clsx": "latest",
     "drizzle-orm": "latest",
-    "@lucide/astro": "latest",
+    "fflate": "^0.8.3",
     "tailwind-merge": "latest"
   },
   "devDependencies": {

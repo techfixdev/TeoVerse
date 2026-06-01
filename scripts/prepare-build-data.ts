@@ -10,6 +10,7 @@ if (hasTursoConnection) {
 
 runPnpmScript('db:push');
 runPnpmScript('db:seed');
+runPnpmScript('import:spapddpt');
 
 function runPnpmScript(script: string) {
   const result = spawnSync('pnpm', ['run', script], {

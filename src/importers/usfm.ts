@@ -20,6 +20,7 @@ export function parseUsfmBook(usfm: string): ParsedUsfmBook {
   const book: Partial<UsfmBookMetadata> = {};
   const verses: UsfmVerse[] = [];
   let currentChapter: number | undefined;
+  let currentVerse: UsfmVerse | undefined;
 
   for (const rawLine of usfm.split(/\r?\n/)) {
     const line = rawLine.trim();
@@ -43,17 +44,26 @@ export function parseUsfmBook(usfm: string): ParsedUsfmBook {
       continue;
     }
 
-    const verseMatch = line.match(/^\\v\s+(\d+)\s+(.+)$/);
+    const verseMatch = line.match(/^\\v\s+(\d+)[a-z]?(?:-\d+)?\s*(.*)$/i);
     if (verseMatch) {
       if (currentChapter === undefined) {
         throw new Error(`USFM verse ${verseMatch[1]} appears before a chapter marker.`);
       }
 
-      verses.push({
+      currentVerse = {
         chapter: currentChapter,
         verse: Number(verseMatch[1]),
-        text: normalizeText(verseMatch[2]),
-      });
+        text: cleanUsfmText(verseMatch[2]),
+      };
+      verses.push(currentVerse);
+      continue;
+    }
+
+    if (currentVerse && shouldAppendToVerse(line)) {
+      const continuation = cleanUsfmText(line);
+      if (continuation) {
+        currentVerse.text = normalizeText(`${currentVerse.text} ${continuation}`);
+      }
     }
   }
 
@@ -70,4 +80,21 @@ export function parseUsfmBook(usfm: string): ParsedUsfmBook {
 
 function normalizeText(text: string): string {
   return text.replace(/\s+/g, ' ').trim();
+}
+
+function cleanUsfmText(text: string): string {
+  return normalizeText(
+    text
+      .replace(/\\f\s[\s\S]*?\\f\*/g, '')
+      .replace(/\\x\s[\s\S]*?\\x\*/g, '')
+      .replace(/\\\+?w\s+([^|\\]+)(?:\|[^\\]*)?\\\+?w\*/g, '$1')
+      .replace(/\\\+?(?:wj|add|it|bd|em|nd|sc|qt)\s+/g, '')
+      .replace(/\\\+?(?:wj|add|it|bd|em|nd|sc|qt)\*/g, '')
+      .replace(/\\[a-z0-9+]+\*?/gi, ''),
+  );
+}
+
+function shouldAppendToVerse(line: string): boolean {
+  if (!line.startsWith('\\')) return true;
+  return /^\\(?:q\d*|m|mi|nb|pi\d*|li\d*)\b/.test(line);
 }

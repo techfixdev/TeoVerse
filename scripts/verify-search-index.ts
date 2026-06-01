@@ -3,8 +3,8 @@ import { listSearchDocuments } from '../src/db/queries';
 async function verifySearchIndex() {
   const documents = await listSearchDocuments();
 
-  if (documents.length !== 5) {
-    throw new Error(`Expected 5 seeded search documents, got ${documents.length}.`);
+  if (documents.length < 30_000) {
+    throw new Error(`Expected complete spapddpt search documents to include more than 30000 verses, got ${documents.length}.`);
   }
 
   const genesisOneOne = documents.find(
@@ -27,13 +27,17 @@ async function verifySearchIndex() {
     throw new Error(`Expected Genesis 1:1 href to target the verse anchor, got ${genesisOneOne.href}.`);
   }
 
-  const invalidDocument = documents.find(
+  const johnThreeSixteen = documents.find(
     (document) =>
-      document.version !== 'spapddpt' || document.book !== 'Génesis' || document.chapter !== 1 || !document.href,
+      document.version === 'spapddpt' && document.book === 'Juan' && document.chapter === 3 && document.verse === 16,
   );
 
-  if (invalidDocument) {
-    throw new Error('Expected the MVP search index to contain only safe seeded spapddpt Genesis 1 documents.');
+  if (!johnThreeSixteen?.text || !/Dios/i.test(johnThreeSixteen.text)) {
+    throw new Error('Expected search documents to include Juan 3:16 from complete spapddpt data.');
+  }
+
+  if (johnThreeSixteen.href !== '/biblia/spapddpt/juan/3/#v16') {
+    throw new Error(`Expected Juan 3:16 href to target the verse anchor, got ${johnThreeSixteen.href}.`);
   }
 }
 
