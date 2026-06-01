@@ -1,7 +1,11 @@
 -- Migration: recursos schema refactor (PR 2a)
 -- Replaces: biblias → recursos (tipo='biblia'), diccionario → diccionario_entradas (per-recurso)
 -- Adds: recurso_libros (per-resource canon + order), moves versiculos.biblia_id → recurso_id
--- NOTE: db:push --force is used at build time; this file is the reference migration for git history.
+--
+-- IMPORTANT: This migration documents the one-time refactor from the single-Bible `biblias`
+-- schema to the multi-resource `recursos` schema. It is NOT executed at runtime — the database
+-- is re-seeded from the USFM source via `prepare:build-data`. It is kept for git history and
+-- schema-intent documentation only.
 
 --> statement-breakpoint
 CREATE TABLE `recursos` (
@@ -45,10 +49,14 @@ INSERT INTO `recursos` (`tipo`, `slug`, `nombre`, `idioma`, `licencia`, `fuente`
 SELECT 'biblia', `slug`, `nombre`, `idioma`, `licencia`, `fuente` FROM `biblias`;
 --> statement-breakpoint
 -- Backfill: INSERT recurso_libros from libros.orden (MUST happen before libros.orden is dropped)
+-- Derives membership from which books each Bible actually has verses for, mapping
+-- biblias.id → recursos.id via slug — correct for any number of Bibles.
 INSERT INTO `recurso_libros` (`recurso_id`, `libro_id`, `orden`)
-SELECT r.id, l.id, l.orden
-FROM `libros` l
-JOIN `recursos` r ON r.tipo = 'biblia';
+SELECT DISTINCT r.id, v.libro_id, l.orden
+FROM `versiculos` v
+JOIN `libros` l ON l.id = v.libro_id
+JOIN `biblias` b ON b.id = v.biblia_id
+JOIN `recursos` r ON r.slug = b.slug AND r.tipo = 'biblia';
 --> statement-breakpoint
 -- Backfill: seed lexicon recurso
 INSERT OR IGNORE INTO `recursos` (`tipo`, `slug`, `nombre`, `idioma`, `licencia`, `fuente`)
