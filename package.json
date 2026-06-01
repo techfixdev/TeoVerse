@@ -6,14 +6,16 @@
   "packageManager": "pnpm@11.1.1",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro check && astro build",
+    "build": "pnpm prepare:build-data && pnpm build:astro",
+    "build:astro": "astro check && astro build",
     "preview": "astro preview",
     "astro": "astro",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push --force",
     "db:seed": "tsx src/db/seed.ts",
-    "verify": "pnpm verify:bible-queries && pnpm verify:usfm-parser && pnpm verify:usfm-importer && pnpm build",
+    "prepare:build-data": "tsx scripts/prepare-build-data.ts",
+    "verify": "pnpm prepare:build-data && pnpm verify:bible-queries && pnpm verify:usfm-parser && pnpm verify:usfm-importer && pnpm build:astro",
     "verify:bible-queries": "tsx scripts/verify-bible-queries.ts",
     "verify:usfm-parser": "tsx scripts/verify-usfm-parser.ts",
     "verify:usfm-importer": "tsx scripts/verify-usfm-importer.ts"

@@ -27,8 +27,9 @@ TeoVerse is a static Astro 5 Bible reading site focused on approved Spanish Bibl
 | Command | Purpose |
 | --- | --- |
 | `pnpm dev` | Start the Astro dev server. |
-| `pnpm build` | Run `astro check` and build static output. |
-| `pnpm verify` | Run Bible query checks, USFM parser checks, USFM importer checks, and build. |
+| `pnpm build` | Prepare seeded build data, run `astro check`, and build static output. |
+| `pnpm verify` | Prepare seeded build data, run Bible query checks, USFM parser checks, USFM importer checks, and build. |
+| `pnpm prepare:build-data` | Create/update the local build database schema and seed data when Turso is not configured. |
 | `pnpm verify:bible-queries` | Verify expected Bible query behavior against the local database. |
 | `pnpm verify:usfm-parser` | Verify the USFM parser against the committed fixture. |
 | `pnpm verify:usfm-importer` | Verify idempotent USFM import behavior against the local database. |
@@ -64,7 +65,7 @@ Importer details live in `docs/usfm-importer.md`.
 
 ## Environment
 
-Local development works without Turso by using `local.db`. Optional Turso deployment variables are documented in `.env.example` with placeholders only.
+Local development and the seeded MVP build work without Turso by using an ignored `local.db`. `pnpm build` and `pnpm verify` prepare that local database automatically from a clean checkout before Astro queries Drizzle. Optional Turso deployment variables are documented in `.env.example` with placeholders only.
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
@@ -75,8 +76,9 @@ Local development works without Turso by using `local.db`. Optional Turso deploy
 
 - Use pnpm as the package manager.
 - Build command: `pnpm build` or `pnpm verify` for stricter pre-deploy checks.
+- Git builds are self-contained for the seeded MVP: `pnpm build` creates the local schema and seed data when Turso is not configured, without committing `local.db`.
 - Output is static; database queries happen at build time for generated pages.
-- Set Turso env vars in Vercel only if the build should read from a remote database.
+- Set Turso env vars in Vercel only when the build should read from a remote database. Turso becomes necessary later for dynamic data, search, user notes, or other data that cannot come from the committed seed scripts.
 - Confirm attribution pages and visible Bible attribution before publishing.
 
 ## Readiness Checklist
