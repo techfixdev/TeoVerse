@@ -2,8 +2,8 @@ import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { and, eq } from 'drizzle-orm';
 import { db } from '../src/db/client';
-import { recursos, libros, recursoLibros, versiculos } from '../src/db/schema';
-import { parseUsfmBook } from '../src/importers/usfm';
+import { recursos, libros, recursoLibros, versiculos, versiculosTokens } from '../src/db/schema';
+import { parseUsfmBook, parseUsfmBookInterlinear } from '../src/importers/usfm';
 
 type Testament = 'AT' | 'NT';
 
@@ -90,23 +90,61 @@ export async function importUsfmBook(input: ImportUsfmBookInput): Promise<Import
     .insert(recursoLibros)
     .values({ recursoId: recurso.id, libroId: libro.id, orden: input.book.order });
 
-  await db.insert(versiculos).values(
-    parsed.verses
-      .filter((verse) => verse.text.length > 0)
-      .map((verse) => ({
+  const cleanVerses = parsed.verses.filter((verse) => verse.text.length > 0);
+  const interlinear = parseUsfmBookInterlinear(usfm);
+
+  // Build a token map keyed by (chapter, verse) for fast lookup during insertion
+  const tokenMap = new Map<string, Array<{ posicion: number; palabra: string; codigoStrong: string | null }>>();
+  for (const iv of interlinear.verses) {
+    tokenMap.set(`${iv.chapter}:${iv.verse}`, iv.tokens);
+  }
+
+  // Insert verses and capture returned IDs for token linking
+  const insertedVerses = await db
+    .insert(versiculos)
+    .values(
+      cleanVerses.map((verse) => ({
         recursoId: recurso.id,
         libroId: libro.id,
         capitulo: verse.chapter,
         versiculo: verse.verse,
         texto: verse.text,
       })),
-  );
+    )
+    .returning({ id: versiculos.id, capitulo: versiculos.capitulo, versiculo: versiculos.versiculo });
+
+  // Collect and batch-insert tokens
+  const tokenRows: Array<{ versiculoId: number; posicion: number; palabra: string; codigoStrong: string | null }> = [];
+  for (const row of insertedVerses) {
+    const tokens = tokenMap.get(`${row.capitulo}:${row.versiculo}`);
+    if (!tokens || tokens.length === 0) continue;
+    for (const token of tokens) {
+      tokenRows.push({
+        versiculoId: row.id,
+        posicion: token.posicion,
+        palabra: token.palabra,
+        codigoStrong: token.codigoStrong,
+      });
+    }
+  }
+
+  for (const tokenChunk of chunkArray(tokenRows, 350)) {
+    await db.insert(versiculosTokens).values(tokenChunk);
+  }
 
   return {
     bibleSlug: recurso.slug,
     bookSlug: libro.slug,
     verseCount: parsed.verses.length,
   };
+}
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
 }
 
 function validateInput(input: ImportUsfmBookInput) {

@@ -10,6 +10,7 @@ if (hasTursoConnection) {
 
 runPnpmScript('db:push');
 runPnpmScript('db:seed');
+// import:spapddpt populates versiculos + versiculos_tokens (Strong interlinear pipeline)
 runPnpmScript('import:spapddpt');
 
 function runPnpmScript(script: string) {

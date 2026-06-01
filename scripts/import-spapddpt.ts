@@ -5,8 +5,8 @@ import { eq } from 'drizzle-orm';
 import { unzipSync, strFromU8 } from 'fflate';
 import { db } from '../src/db/client';
 import { SPAPDDPT_BOOKS, SPAPDDPT_SOURCE } from '../src/importers/spapddpt-manifest';
-import { recursos, libros, recursoLibros, versiculos } from '../src/db/schema';
-import { parseUsfmBook } from '../src/importers/usfm';
+import { recursos, libros, recursoLibros, versiculos, versiculosTokens } from '../src/db/schema';
+import { parseUsfmBook, parseUsfmBookInterlinear } from '../src/importers/usfm';
 
 const sourceDir = path.resolve('sources', SPAPDDPT_SOURCE.slug);
 const zipPath = path.join(sourceDir, 'spapddpt_usfm.zip');
@@ -107,17 +107,48 @@ export async function importSpapddpt() {
       .onConflictDoNothing();
 
     const cleanVerses = parsed.verses.filter((verse) => verse.text.length > 0);
+    const interlinear = parseUsfmBookInterlinear(strFromU8(entries[entryName]));
 
+    // Build a token map keyed by (chapter, verse) for fast lookup during insertion
+    const tokenMap = new Map<string, Array<{ posicion: number; palabra: string; codigoStrong: string | null }>>();
+    for (const iv of interlinear.verses) {
+      tokenMap.set(`${iv.chapter}:${iv.verse}`, iv.tokens);
+    }
+
+    // Insert verses one chunk at a time and capture returned IDs for token linking
     for (const chunk of chunkArray(cleanVerses, 350)) {
-      await db.insert(versiculos).values(
-        chunk.map((verse) => ({
-          recursoId: recurso.id,
-          libroId: libro.id,
-          capitulo: verse.chapter,
-          versiculo: verse.verse,
-          texto: verse.text,
-        })),
-      );
+      const insertedVerses = await db
+        .insert(versiculos)
+        .values(
+          chunk.map((verse) => ({
+            recursoId: recurso.id,
+            libroId: libro.id,
+            capitulo: verse.chapter,
+            versiculo: verse.verse,
+            texto: verse.text,
+          })),
+        )
+        .returning({ id: versiculos.id, capitulo: versiculos.capitulo, versiculo: versiculos.versiculo });
+
+      // Collect all tokens for this chunk keyed to the verse IDs just returned
+      const tokenRows: Array<{ versiculoId: number; posicion: number; palabra: string; codigoStrong: string | null }> = [];
+      for (const row of insertedVerses) {
+        const tokens = tokenMap.get(`${row.capitulo}:${row.versiculo}`);
+        if (!tokens || tokens.length === 0) continue;
+        for (const token of tokens) {
+          tokenRows.push({
+            versiculoId: row.id,
+            posicion: token.posicion,
+            palabra: token.palabra,
+            codigoStrong: token.codigoStrong,
+          });
+        }
+      }
+
+      // Batch-insert tokens in sub-chunks of 350 to stay within SQLite limits
+      for (const tokenChunk of chunkArray(tokenRows, 350)) {
+        await db.insert(versiculosTokens).values(tokenChunk);
+      }
     }
 
     totalVerses += cleanVerses.length;
