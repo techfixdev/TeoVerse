@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { eq } from 'drizzle-orm';
 import { db } from '../src/db/client';
-import { biblias, libros, versiculos } from '../src/db/schema';
+import { recursos, libros, recursoLibros, versiculos } from '../src/db/schema';
 import { parseUsfmBook } from '../src/importers/usfm';
 
 type Testament = 'AT' | 'NT';
@@ -41,9 +41,10 @@ export async function importUsfmBook(input: ImportUsfmBookInput): Promise<Import
     throw new Error('USFM import requires at least one parsed verse.');
   }
 
-  const [createdBiblia] = await db
-    .insert(biblias)
+  const [createdRecurso] = await db
+    .insert(recursos)
     .values({
+      tipo: 'biblia',
       slug: input.bible.slug,
       nombre: input.bible.name,
       idioma: input.bible.language,
@@ -53,8 +54,10 @@ export async function importUsfmBook(input: ImportUsfmBookInput): Promise<Import
     .onConflictDoNothing()
     .returning();
 
-  const biblia = createdBiblia ?? (await db.select().from(biblias).where(eq(biblias.slug, input.bible.slug)).get());
-  if (!biblia) throw new Error(`Could not create or load Bible ${input.bible.slug}.`);
+  const recurso =
+    createdRecurso ??
+    (await db.select().from(recursos).where(eq(recursos.slug, input.bible.slug)).get());
+  if (!recurso) throw new Error(`Could not create or load recurso ${input.bible.slug}.`);
 
   const [createdLibro] = await db
     .insert(libros)
@@ -63,19 +66,25 @@ export async function importUsfmBook(input: ImportUsfmBookInput): Promise<Import
       nombre: input.book.name,
       slug: input.book.slug,
       abreviatura: input.book.abbreviation,
-      orden: input.book.order,
     })
     .onConflictDoNothing()
     .returning();
 
-  const libro = createdLibro ?? (await db.select().from(libros).where(eq(libros.slug, input.book.slug)).get());
+  const libro =
+    createdLibro ?? (await db.select().from(libros).where(eq(libros.slug, input.book.slug)).get());
   if (!libro) throw new Error(`Could not create or load book ${input.book.slug}.`);
+
+  // Seed per-resource canon order
+  await db
+    .insert(recursoLibros)
+    .values({ recursoId: recurso.id, libroId: libro.id, orden: input.book.order })
+    .onConflictDoNothing();
 
   await db
     .insert(versiculos)
     .values(
       parsed.verses.map((verse) => ({
-        bibliaId: biblia.id,
+        recursoId: recurso.id,
         libroId: libro.id,
         capitulo: verse.chapter,
         versiculo: verse.verse,
@@ -85,7 +94,7 @@ export async function importUsfmBook(input: ImportUsfmBookInput): Promise<Import
     .onConflictDoNothing();
 
   return {
-    bibleSlug: biblia.slug,
+    bibleSlug: recurso.slug,
     bookSlug: libro.slug,
     verseCount: parsed.verses.length,
   };
