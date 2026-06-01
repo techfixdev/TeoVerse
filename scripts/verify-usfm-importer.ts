@@ -1,6 +1,6 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { db } from '../src/db/client';
-import { recursos, libros, versiculos } from '../src/db/schema';
+import { recursos, libros, recursoLibros, versiculos } from '../src/db/schema';
 import { importUsfmBook } from './import-usfm';
 
 const fixturePath = new URL('../fixtures/usfm/spapddpt-genesis-1.usfm', import.meta.url);
@@ -87,6 +87,17 @@ async function verifyUsfmImporter() {
       .where(eq(versiculos.recursoId, recurso.id));
 
     assertEqual(afterSecondImport.length, 5, 'Expected repeated fixture import to avoid duplicate verses.');
+
+    // Assert recurso_libros row exists with the correct orden for this (recurso, libro) pair.
+    const recursoLibroRow = await db
+      .select()
+      .from(recursoLibros)
+      .where(and(eq(recursoLibros.recursoId, recurso.id), eq(recursoLibros.libroId, libro.id)))
+      .get();
+    if (!recursoLibroRow) {
+      throw new Error('Expected importer to insert a recurso_libros row for the fixture (recurso, libro) pair.');
+    }
+    assertEqual(recursoLibroRow.orden, 101, 'Expected recurso_libros.orden to match the fixture book order.');
   } finally {
     await cleanupFixtureImport();
   }

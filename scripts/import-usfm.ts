@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { db } from '../src/db/client';
 import { recursos, libros, recursoLibros, versiculos } from '../src/db/schema';
 import { parseUsfmBook } from '../src/importers/usfm';
@@ -74,24 +74,33 @@ export async function importUsfmBook(input: ImportUsfmBookInput): Promise<Import
     createdLibro ?? (await db.select().from(libros).where(eq(libros.slug, input.book.slug)).get());
   if (!libro) throw new Error(`Could not create or load book ${input.book.slug}.`);
 
+  // Delete existing data for this (recurso, libro) pair before re-inserting — ensures
+  // a re-import fully replaces both verse text and canon order (idempotent).
+  await db
+    .delete(versiculos)
+    .where(and(eq(versiculos.recursoId, recurso.id), eq(versiculos.libroId, libro.id)));
+  await db
+    .delete(recursoLibros)
+    .where(
+      and(eq(recursoLibros.recursoId, recurso.id), eq(recursoLibros.libroId, libro.id)),
+    );
+
   // Seed per-resource canon order
   await db
     .insert(recursoLibros)
-    .values({ recursoId: recurso.id, libroId: libro.id, orden: input.book.order })
-    .onConflictDoNothing();
+    .values({ recursoId: recurso.id, libroId: libro.id, orden: input.book.order });
 
-  await db
-    .insert(versiculos)
-    .values(
-      parsed.verses.map((verse) => ({
+  await db.insert(versiculos).values(
+    parsed.verses
+      .filter((verse) => verse.text.length > 0)
+      .map((verse) => ({
         recursoId: recurso.id,
         libroId: libro.id,
         capitulo: verse.chapter,
         versiculo: verse.verse,
         texto: verse.text,
       })),
-    )
-    .onConflictDoNothing();
+  );
 
   return {
     bibleSlug: recurso.slug,
