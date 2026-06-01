@@ -1,5 +1,5 @@
 import { relations } from 'drizzle-orm';
-import { integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const recursos = sqliteTable('recursos', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -63,6 +63,23 @@ export const versiculos = sqliteTable(
   ],
 );
 
+export const versiculosTokens = sqliteTable(
+  'versiculos_tokens',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    versiculoId: integer('versiculo_id')
+      .notNull()
+      .references(() => versiculos.id, { onDelete: 'cascade' }),
+    posicion: integer('posicion').notNull(),
+    palabra: text('palabra').notNull(),
+    codigoStrong: text('codigo_strong'),
+  },
+  (table) => [
+    index('versiculos_tokens_versiculo_idx').on(table.versiculoId, table.posicion),
+    index('versiculos_tokens_strong_idx').on(table.codigoStrong),
+  ],
+);
+
 export const diccionarioEntradas = sqliteTable(
   'diccionario_entradas',
   {
@@ -95,9 +112,14 @@ export const recursoLibrosRelations = relations(recursoLibros, ({ one }) => ({
   libro: one(libros, { fields: [recursoLibros.libroId], references: [libros.id] }),
 }));
 
-export const versiculosRelations = relations(versiculos, ({ one }) => ({
+export const versiculosRelations = relations(versiculos, ({ one, many }) => ({
   recurso: one(recursos, { fields: [versiculos.recursoId], references: [recursos.id] }),
   libro: one(libros, { fields: [versiculos.libroId], references: [libros.id] }),
+  tokens: many(versiculosTokens),
+}));
+
+export const versiculosTokensRelations = relations(versiculosTokens, ({ one }) => ({
+  versiculo: one(versiculos, { fields: [versiculosTokens.versiculoId], references: [versiculos.id] }),
 }));
 
 export const diccionarioEntradasRelations = relations(diccionarioEntradas, ({ one }) => ({
@@ -116,3 +138,5 @@ export type Versiculo = typeof versiculos.$inferSelect;
 export type NuevoVersiculo = typeof versiculos.$inferInsert;
 export type EntradaDiccionario = typeof diccionarioEntradas.$inferSelect;
 export type NuevaEntradaDiccionario = typeof diccionarioEntradas.$inferInsert;
+export type VersiculoToken = typeof versiculosTokens.$inferSelect;
+export type NuevoVersiculoToken = typeof versiculosTokens.$inferInsert;
