@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { db } from '../src/db/client';
-import { biblias, libros, versiculos } from '../src/db/schema';
+import { recursos, libros, versiculos } from '../src/db/schema';
 import { importUsfmBook } from './import-usfm';
 
 const fixturePath = new URL('../fixtures/usfm/spapddpt-genesis-1.usfm', import.meta.url);
@@ -37,12 +37,13 @@ async function verifyUsfmImporter() {
     assertEqual(result.bookSlug, 'genesis-fixture', 'Expected importer to report imported book slug.');
     assertEqual(result.verseCount, 5, 'Expected importer to report fixture verse count.');
 
-    const biblia = await db.select().from(biblias).where(eq(biblias.slug, 'spapddpt-fixture')).get();
-    if (!biblia) throw new Error('Expected importer to insert the fixture Bible row.');
+    const recurso = await db.select().from(recursos).where(eq(recursos.slug, 'spapddpt-fixture')).get();
+    if (!recurso) throw new Error('Expected importer to insert the fixture recurso row.');
 
-    assertEqual(biblia.licencia.includes('CC BY 4.0'), true, 'Expected importer to preserve CC BY 4.0 license.');
+    assertEqual(recurso.tipo, 'biblia', 'Expected importer to set tipo biblia on the fixture recurso.');
+    assertEqual(recurso.licencia.includes('CC BY 4.0'), true, 'Expected importer to preserve CC BY 4.0 license.');
     assertEqual(
-      biblia.fuente.includes('https://ebible.org/find/details.php?id=spapddpt'),
+      recurso.fuente.includes('https://ebible.org/find/details.php?id=spapddpt'),
       true,
       'Expected importer to preserve source attribution metadata.',
     );
@@ -53,7 +54,7 @@ async function verifyUsfmImporter() {
     const importedVerses = await db
       .select()
       .from(versiculos)
-      .where(eq(versiculos.bibliaId, biblia.id));
+      .where(eq(versiculos.recursoId, recurso.id));
 
     assertEqual(importedVerses.length, 5, 'Expected importer to insert five fixture verses without duplicates.');
     assertEqual(
@@ -83,7 +84,7 @@ async function verifyUsfmImporter() {
     const afterSecondImport = await db
       .select()
       .from(versiculos)
-      .where(eq(versiculos.bibliaId, biblia.id));
+      .where(eq(versiculos.recursoId, recurso.id));
 
     assertEqual(afterSecondImport.length, 5, 'Expected repeated fixture import to avoid duplicate verses.');
   } finally {
@@ -92,7 +93,7 @@ async function verifyUsfmImporter() {
 }
 
 async function cleanupFixtureImport() {
-  await db.delete(biblias).where(eq(biblias.slug, 'spapddpt-fixture'));
+  await db.delete(recursos).where(eq(recursos.slug, 'spapddpt-fixture'));
   await db.delete(libros).where(eq(libros.slug, 'genesis-fixture'));
 }
 
