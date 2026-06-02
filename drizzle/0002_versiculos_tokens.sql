@@ -10,5 +10,7 @@ CREATE TABLE `versiculos_tokens` (
   `codigo_strong` text
 );
 
-CREATE INDEX `versiculos_tokens_versiculo_idx` ON `versiculos_tokens` (`versiculo_id`, `posicion`);
+-- posicion = 0-based word index within the verse across ALL words (tagged + untagged).
+-- Unique guards against silent duplicate tokens if a future code path skips delete-before-insert.
+CREATE UNIQUE INDEX `versiculos_tokens_versiculo_pos_uidx` ON `versiculos_tokens` (`versiculo_id`, `posicion`);
 CREATE INDEX `versiculos_tokens_strong_idx` ON `versiculos_tokens` (`codigo_strong`);

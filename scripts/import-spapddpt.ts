@@ -74,7 +74,9 @@ export async function importSpapddpt() {
     const entryName = Object.keys(entries).find((name) => name.endsWith(`${book.id}${SPAPDDPT_SOURCE.slug}.usfm`));
     if (!entryName) throw new Error(`Missing USFM file for ${book.id}.`);
 
-    const parsed = parseUsfmBook(strFromU8(entries[entryName]));
+    // Decode the USFM bytes once and reuse for both plain-text and interlinear parsing.
+    const usfmText = strFromU8(entries[entryName]);
+    const parsed = parseUsfmBook(usfmText);
     if (parsed.book.id !== book.id) {
       throw new Error(`Expected ${entryName} to contain ${book.id}, got ${parsed.book.id}.`);
     }
@@ -107,7 +109,7 @@ export async function importSpapddpt() {
       .onConflictDoNothing();
 
     const cleanVerses = parsed.verses.filter((verse) => verse.text.length > 0);
-    const interlinear = parseUsfmBookInterlinear(strFromU8(entries[entryName]));
+    const interlinear = parseUsfmBookInterlinear(usfmText);
 
     // Build a token map keyed by (chapter, verse) for fast lookup during insertion
     const tokenMap = new Map<string, Array<{ posicion: number; palabra: string; codigoStrong: string | null }>>();

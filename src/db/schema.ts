@@ -70,12 +70,16 @@ export const versiculosTokens = sqliteTable(
     versiculoId: integer('versiculo_id')
       .notNull()
       .references(() => versiculos.id, { onDelete: 'cascade' }),
+    // 0-based word index within the verse across ALL words (tagged + untagged)
     posicion: integer('posicion').notNull(),
     palabra: text('palabra').notNull(),
     codigoStrong: text('codigo_strong'),
   },
   (table) => [
-    index('versiculos_tokens_versiculo_idx').on(table.versiculoId, table.posicion),
+    // posicion = 0-based word index within the verse across ALL words; tagged words carry
+    // codigoStrong, untagged words have codigoStrong = null; the ordered token stream
+    // reconstructs the verse text. Unique enforces no duplicate positions per verse.
+    uniqueIndex('versiculos_tokens_versiculo_pos_uidx').on(table.versiculoId, table.posicion),
     index('versiculos_tokens_strong_idx').on(table.codigoStrong),
   ],
 );

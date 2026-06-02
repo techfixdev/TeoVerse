@@ -97,17 +97,24 @@ export function parseUsfmBook(usfm: string): ParsedUsfmBook {
 /**
  * Parses USFM source into per-verse interlinear token lists (word + Strong code).
  * Handles both \w and \+w variants (the latter appears inside \wj spans).
- * Words without a strong= attribute yield codigoStrong: null.
+ *
+ * ALL words of each verse are captured, in reading order:
+ *   - posicion = 0-based word index within the verse across ALL words (tagged AND untagged).
+ *   - Tagged words (\w surface|strong:CODE\w*) carry their codigoStrong.
+ *   - Untagged words carry codigoStrong = null.
+ *   - The ordered token stream (joined by spaces) reconstructs the verse plain text
+ *     produced by cleanUsfmText — the reconstruction invariant.
+ *
+ * If a \w marker's surface text contains multiple whitespace-separated words, each word
+ * becomes a separate token carrying the same codigoStrong (a single lexeme can span
+ * multiple surface words in some editions).
+ *
  * Does NOT modify cleanUsfmText — the plain-text import path is byte-identical.
  */
 export function parseUsfmBookInterlinear(usfm: string): ParsedUsfmBookInterlinear {
   const verses: UsfmVerseWithTokens[] = [];
   let currentChapter: number | undefined;
   let currentVerse: UsfmVerseWithTokens | undefined;
-
-  // Regex captures \w or \+w markers with their surface text and optional attributes.
-  // Format: \w surface|strong="HXXXX"\w*  or  \+w surface|strong="HXXXX"\+w*
-  const wTokenRe = /\\\+?w\s+([^|\\]+?)(?:\|([^\\]*))?\\\+?w\*/g;
 
   for (const rawLine of usfm.split(/\r?\n/)) {
     const line = rawLine.trim();
@@ -126,15 +133,15 @@ export function parseUsfmBookInterlinear(usfm: string): ParsedUsfmBookInterlinea
       currentVerse = {
         chapter: currentChapter,
         verse: Number(verseMatch[1]),
-        tokens: extractTokens(verseMatch[2], wTokenRe),
+        tokens: extractAllTokens(verseMatch[2]),
       };
       verses.push(currentVerse);
       continue;
     }
 
-    // Continuation lines (poetry, paragraph markers) — append tokens
+    // Continuation lines (poetry, paragraph markers) — append tokens with offset
     if (currentVerse && shouldAppendToVerse(line)) {
-      const extra = extractTokens(line, wTokenRe);
+      const extra = extractAllTokens(line);
       if (extra.length > 0) {
         const offset = currentVerse.tokens.length;
         for (const token of extra) {
@@ -147,21 +154,59 @@ export function parseUsfmBookInterlinear(usfm: string): ParsedUsfmBookInterlinea
   return { verses };
 }
 
-function extractTokens(text: string, re: RegExp): UsfmToken[] {
-  re.lastIndex = 0;
-  const tokens: UsfmToken[] = [];
-  let posicion = 0;
-  let match: RegExpExecArray | null;
+/**
+ * Extracts ALL words from a USFM text segment (one verse line or continuation) as tokens,
+ * preserving reading order. Uses the same cleaning rules as cleanUsfmText so that
+ * joining the returned token surfaces (in posicion order) equals the plain text produced
+ * by cleanUsfmText for the same segment.
+ *
+ * Strategy:
+ *   1. Scan the raw text for \w/\+w markers in left-to-right order, collecting each tagged
+ *      surface and its Strong code into a queue.
+ *   2. Compute the clean word list by calling cleanUsfmText (the same function used by the
+ *      plain-text import path), which handles all punctuation adjacency, marker removal, and
+ *      whitespace normalisation correctly.
+ *   3. Walk the clean words in order and assign Strong codes by matching each clean word
+ *      against the front of the tagged queue: a clean word matches the next tagged surface
+ *      when it CONTAINS that surface as a substring (punctuation may be glued before or after
+ *      the surface by cleanUsfmText). Unmatched words get codigoStrong = null.
+ *
+ * This approach guarantees the reconstruction invariant by construction — the token surfaces
+ * ARE the clean words — and is immune to adjacent-punctuation issues because the punctuation
+ * attachment is delegated entirely to cleanUsfmText.
+ */
+function extractAllTokens(text: string): UsfmToken[] {
+  // Step 1: collect tagged surfaces in document order
+  const taggedQueue: Array<{ surface: string; codigoStrong: string | null }> = [];
 
-  while ((match = re.exec(text)) !== null) {
-    const palabra = match[1].trim();
+  const wTagRe = /\\\+?w\s+([^|\\]+?)(?:\|([^\\]*))?\\\+?w\*/g;
+  for (const match of text.matchAll(wTagRe)) {
+    const surface = match[1].trim();
     const attrs = match[2] ?? '';
-    // Attribute format: strong="H7225" (may also be strong:H7225 in some editions)
     const strongMatch = attrs.match(/strong[=:"]+([A-Za-z][0-9]+)/);
     const codigoStrong = strongMatch ? strongMatch[1] : null;
-    if (palabra) {
-      tokens.push({ posicion, palabra, codigoStrong });
-      posicion++;
+    // A \w span can cover multiple whitespace-separated surface words; each becomes its own token
+    for (const word of surface.split(/\s+/).filter(Boolean)) {
+      taggedQueue.push({ surface: word, codigoStrong });
+    }
+  }
+
+  // Step 2: obtain the authoritative clean word list via cleanUsfmText
+  const cleanText = cleanUsfmText(text);
+  if (!cleanText) return [];
+  const cleanWords = cleanText.split(/\s+/).filter(Boolean);
+
+  // Step 3: assign Strong codes — each clean word is checked against the next tagged surface
+  const tokens: UsfmToken[] = [];
+  let tagIndex = 0;
+
+  for (let posicion = 0; posicion < cleanWords.length; posicion++) {
+    const palabra = cleanWords[posicion];
+    if (tagIndex < taggedQueue.length && palabra.includes(taggedQueue[tagIndex].surface)) {
+      tokens.push({ posicion, palabra, codigoStrong: taggedQueue[tagIndex].codigoStrong });
+      tagIndex++;
+    } else {
+      tokens.push({ posicion, palabra, codigoStrong: null });
     }
   }
 
@@ -172,7 +217,7 @@ function normalizeText(text: string): string {
   return text.replace(/\s+/g, ' ').trim();
 }
 
-function cleanUsfmText(text: string): string {
+export function cleanUsfmText(text: string): string {
   return normalizeText(
     text
       .replace(/\\f\s[\s\S]*?\\f\*/g, '')
