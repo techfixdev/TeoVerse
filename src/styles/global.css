@@ -236,6 +236,7 @@ html.ws-strong-open .workspace-panels {
   padding: 1rem;
   flex: 1;
   overflow-y: auto;
+  overflow-wrap: break-word;
 }
 
 /* Content elements */
