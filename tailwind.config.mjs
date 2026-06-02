@@ -6,9 +6,10 @@ export default {
     extend: {
       colors: {
         brand: {
-          cian:      '#19ADD3', // accents, isotipo, CTAs, links, active states
+          cian:      '#19ADD3', // decorative, backgrounds, borders, icons (2.64:1 — not for text)
+          cianDark:  '#0E7FA3', // text on light bg — AA-compliant (4.58:1 on white)
           cianClaro: '#81D8EB', // soft backgrounds, gradients, secondary surfaces
-          gris:      '#7F7F7F', // brand name, primary text, neutral elements
+          gris:      '#767676', // text on light bg — AA-compliant (4.54:1 on white)
           grisSuave: '#B7B7B7', // subtitles, lines, dividers, discrete backgrounds
         },
       },
