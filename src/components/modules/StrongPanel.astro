@@ -25,7 +25,7 @@
  */
 ---
 
-<div id="strong-panel" class="strong-panel" role="complementary" aria-label="Diccionario Strong" aria-live="polite" hidden>
+<div id="strong-panel" class="strong-panel" role="complementary" aria-label="Diccionario Strong" aria-live="polite">
 
   {/* Panel header — always visible when panel is open */}
   <div class="strong-panel__header">
@@ -51,11 +51,10 @@
 
 <script>
   import { $senalStrong } from '@/stores/referencia';
-  import { actualizarModulo, $workspace } from '@/stores/workspace';
+  import { actualizarModulo } from '@/stores/workspace';
   import { fetchEntrada } from '@/modules/strong/fetchEntrada';
 
-  const panel = document.getElementById('strong-panel');
-  const body  = document.getElementById('strong-panel-body');
+  const body    = document.getElementById('strong-panel-body');
   const closeBtn = document.getElementById('strong-panel-close');
 
   // -------------------------------------------------------------------------
@@ -67,14 +66,12 @@
     // Immediately reflect in DOM for CSS (ws-strong-open/closed classes on <html>)
     document.documentElement.classList.add('ws-strong-open');
     document.documentElement.classList.remove('ws-strong-closed');
-    panel?.removeAttribute('hidden');
   }
 
   function closePanel() {
     actualizarModulo('strong', { habilitado: false, modo: 'cerrado' });
     document.documentElement.classList.remove('ws-strong-open');
     document.documentElement.classList.add('ws-strong-closed');
-    panel?.setAttribute('hidden', '');
   }
 
   // -------------------------------------------------------------------------
@@ -176,14 +173,4 @@
 
   // Close button
   closeBtn?.addEventListener('click', closePanel);
-
-  // Restore initial state from $workspace if previously open
-  const wsState = $workspace.get();
-  const strongModulo = wsState.modulos['strong'];
-  if (strongModulo?.habilitado && strongModulo?.modo !== 'cerrado') {
-    panel?.removeAttribute('hidden');
-    document.documentElement.classList.add('ws-strong-open');
-  } else {
-    panel?.setAttribute('hidden', '');
-  }
 </script>

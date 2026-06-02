@@ -152,16 +152,15 @@ html.ws-strong-open .workspace-panels {
 
 /* Base panel — hidden by default; shown via ws-strong-open or desktop aside */
 .strong-panel {
-  display: flex;
+  display: none;
   flex-direction: column;
   background-color: var(--brand-base);
   border-top: 2px solid var(--brand-cian-dark);
   overflow: hidden;
 }
 
-/* Panel hidden state */
-.strong-panel[hidden] {
-  display: none !important;
+html.ws-strong-open .strong-panel {
+  display: flex;
 }
 
 /* Mobile: fixed bottom sheet */
@@ -182,10 +181,15 @@ html.ws-strong-open .workspace-panels {
 /* Desktop: fills the aside naturally — no fixed positioning */
 @media (min-width: 1024px) {
   .strong-panel {
+    display: flex;
     border-radius: 0.75rem;
     border: 1px solid var(--brand-cian-dark);
     margin-block: 0.5rem;
     box-shadow: 0 2px 12px rgb(0 0 0 / 0.06);
+  }
+
+  .strong-panel__close {
+    display: none;
   }
 }
 
