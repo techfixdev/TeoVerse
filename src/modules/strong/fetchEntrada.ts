@@ -5,8 +5,9 @@
  * Designed to be called at runtime from the StrongPanel island.
  *
  * Return contract:
- *   - `{ lema, definicion }` on HTTP 200
+ *   - `{ lema, definicion }` on HTTP 200 with non-empty lema or definicion
  *   - `null` on HTTP 404 (graceful empty per D7 — code is shown without definition)
+ *   - `null` on HTTP 200 with both lema and definicion empty/missing
  *   - throws on any other status or network error
  *
  * No runtime DB access. Consumes the static endpoints emitted by PR 2b at
@@ -23,7 +24,9 @@ export interface EntradaStrong {
  *
  * @param codigoStrong - The Strong code, e.g. `"G25"` or `"H430"`.
  * @param lexiconSlug  - The lexicon resource slug. Defaults to `'strong-es'`.
- * @returns The entry `{ lema, definicion }` on success, `null` on 404.
+ * @returns The entry `{ lema, definicion }` on success; `null` on 404 or on a
+ *          200 response with no lema and no definicion; throws on other HTTP
+ *          errors or invalid code format.
  * @throws  On network failures or non-200/404 HTTP statuses.
  */
 export async function fetchEntrada(
