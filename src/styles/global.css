@@ -174,7 +174,6 @@ html.ws-strong-open .strong-panel {
     border-radius: 1rem 1rem 0 0;
     box-shadow: 0 -4px 24px rgb(0 0 0 / 0.12);
     overflow-y: auto;
-    /* Hidden by default on mobile; shown by removing [hidden] */
   }
 }
 

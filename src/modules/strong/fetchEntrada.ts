@@ -30,7 +30,7 @@ export async function fetchEntrada(
   codigoStrong: string,
   lexiconSlug = 'strong-es',
 ): Promise<EntradaStrong | null> {
-  if (!/^[GH]\d+[a-z]?$/i.test(codigoStrong)) {
+  if (!/^[GH]\d+[a-z]?$/.test(codigoStrong)) {
     throw new Error(`fetchEntrada: invalid codigoStrong format: "${codigoStrong}"`);
   }
 
@@ -48,5 +48,8 @@ export async function fetchEntrada(
   }
 
   const data = await response.json();
-  return { lema: String(data.lema ?? ''), definicion: String(data.definicion ?? '') };
+  const lema = typeof data.lema === 'string' ? data.lema : '';
+  const definicion = typeof data.definicion === 'string' ? data.definicion : '';
+  if (!lema && !definicion) return null;
+  return { lema, definicion };
 }

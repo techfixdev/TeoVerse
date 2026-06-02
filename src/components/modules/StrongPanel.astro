@@ -62,16 +62,16 @@
   // -------------------------------------------------------------------------
 
   function openPanel() {
-    actualizarModulo('strong', { habilitado: true, modo: 'normal' });
     // Immediately reflect in DOM for CSS (ws-strong-open/closed classes on <html>)
     document.documentElement.classList.add('ws-strong-open');
     document.documentElement.classList.remove('ws-strong-closed');
+    actualizarModulo('strong', { habilitado: true, modo: 'normal' });
   }
 
   function closePanel() {
-    actualizarModulo('strong', { habilitado: false, modo: 'cerrado' });
     document.documentElement.classList.remove('ws-strong-open');
     document.documentElement.classList.add('ws-strong-closed');
+    actualizarModulo('strong', { habilitado: true, modo: 'cerrado' });
   }
 
   // -------------------------------------------------------------------------
