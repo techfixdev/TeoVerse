@@ -40,7 +40,7 @@ if (!navigation) {
 
     {/* Version + book + chapter heading */}
     <p class="mt-6 text-sm font-medium uppercase tracking-[0.2em] text-brand-cianDark">{chapter.biblia.slug}</p>
-    <h1 class="mt-2 text-3xl font-bold" style="color: var(--brand-text);">{chapter.libro.nombre} {chapter.capitulo}</h1>
+    <h1 class="mt-2 text-3xl font-bold text-[color:var(--brand-text)]">{chapter.libro.nombre} {chapter.capitulo}</h1>
     <p class="mt-2 text-sm text-brand-gris" aria-current="page">Capítulo actual: {navigation.current.label}</p>
 
     {/* Chapter navigation */}
@@ -81,7 +81,7 @@ if (!navigation) {
 
     {/* Verse list — font-reading (Georgia) preserved for scripture readability.
         Verse li id="v{n}" anchors kept byte-stable for #v{n} deep links. */}
-    <ol class="mt-6 space-y-5 font-reading text-lg leading-8" style="color: var(--brand-text);">
+    <ol class="mt-6 space-y-5 font-reading text-lg leading-8 text-[color:var(--brand-text)]">
       {chapter.versiculos.map((versiculo) => (
         <li id={`v${versiculo.numero}`} class="grid grid-cols-[2rem_1fr] gap-3">
           <span class="pt-1 text-sm font-bold text-brand-cianDark">{versiculo.numero}</span>

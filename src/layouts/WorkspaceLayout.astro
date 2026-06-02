@@ -8,12 +8,12 @@
  *
  * The layout:
  * 1. Sets data-version / data-libro / data-capitulo on <html> so that the
- *    ReferenciaSeed client:load island can seed $referencia from the DOM.
+ *    ReferenciaSeed script can seed $referencia from the DOM.
  * 2. Injects the no-shift bootstrap script in <head> (runs before first paint).
- * 3. Loads brand fonts (Inter + Caveat) via Google Fonts with font-display:swap.
+ * 3. Self-hosts brand fonts (Inter + Caveat) via @fontsource — no CDN dependency.
  * 4. Provides a branded header (BrandLogo + nav), the workspace grid (reading
  *    region + panels aside), and a footer with attribution + tagline.
- * 5. Mounts ReferenciaSeed (client:load) to wire $referencia from data-*.
+ * 5. Mounts ReferenciaSeed to wire $referencia from data-*.
  *
  * Slots:
  *   default  — main reading content (the chapter article).
@@ -79,10 +79,10 @@ const {
         <BrandLogo />
 
         <nav class="flex items-center gap-4 text-sm font-medium text-brand-gris" aria-label="Navegación principal">
-          <a class="rounded-sm transition hover:text-brand-cianDark focus-visible:text-brand-cianDark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-cian focus-visible:ring-offset-2" href="/">Inicio</a>
-          <a class="rounded-sm transition hover:text-brand-cianDark focus-visible:text-brand-cianDark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-cian focus-visible:ring-offset-2" href="/biblia">Biblioteca</a>
-          <a class="rounded-sm transition hover:text-brand-cianDark focus-visible:text-brand-cianDark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-cian focus-visible:ring-offset-2" href="/buscar">Buscar</a>
-          <a class="rounded-sm transition hover:text-brand-cianDark focus-visible:text-brand-cianDark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-cian focus-visible:ring-offset-2" href="/atribuciones">Atribuciones</a>
+          <a class="rounded-sm transition hover:text-brand-cianDark focus-visible:text-brand-cianDark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-cianDark focus-visible:ring-offset-2" href="/">Inicio</a>
+          <a class="rounded-sm transition hover:text-brand-cianDark focus-visible:text-brand-cianDark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-cianDark focus-visible:ring-offset-2" href="/biblia">Biblioteca</a>
+          <a class="rounded-sm transition hover:text-brand-cianDark focus-visible:text-brand-cianDark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-cianDark focus-visible:ring-offset-2" href="/buscar">Buscar</a>
+          <a class="rounded-sm transition hover:text-brand-cianDark focus-visible:text-brand-cianDark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-cianDark focus-visible:ring-offset-2" href="/atribuciones">Atribuciones</a>
         </nav>
       </div>
     </header>
@@ -112,8 +112,8 @@ const {
     </footer>
 
     {/* ReferenciaSeed: reads data-* from <html> and seeds $referencia store.
-        client:load = runs on mount (before client:idle islands start up). */}
-    <ReferenciaSeed client:load />
+        Its <script> runs on parse; no hydration directive needed (.astro). */}
+    <ReferenciaSeed />
 
   </body>
 </html>
