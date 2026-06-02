@@ -2,23 +2,23 @@
 /**
  * BrandLogo — Ríos de Vida logotype component.
  *
- * Renders the real logo PNG asset (public/brand/rios-de-vida-logo.png)
- * with a typographic fallback if the asset is unavailable.
+ * Renders the logo through astro:assets <Image> (sharp-processed WebP,
+ * explicit width+height to prevent CLS). Falls back to a typographic
+ * wordmark if the asset fails to load.
  *
  * Props:
- *   isotypeOnly — when true, shows the logo image cropped to its isotipo square
- *                 (useful for compact headers or favicon-adjacent use cases).
+ *   isotypeOnly — when true, shows the logo at a compact isotipo size.
  *   class       — additional Tailwind classes forwarded to the wrapper element.
  */
+import { Image } from 'astro:assets';
+import logoSrc from '@/assets/brand/rios-de-vida-logo.png';
+
 interface Props {
   isotypeOnly?: boolean;
   class?: string;
 }
 
 const { isotypeOnly = false, class: extraClass = '' } = Astro.props;
-
-// Logo asset path — served from public/ at build time.
-const logoSrc = '/brand/rios-de-vida-logo.png';
 ---
 
 <a
@@ -27,44 +27,32 @@ const logoSrc = '/brand/rios-de-vida-logo.png';
   aria-label="Ríos de Vida — inicio"
 >
   {isotypeOnly ? (
-    /* Isotipo-only mode: render just the image at a small fixed size */
-    <img
+    /* Isotipo-only mode: constrained to 48×48 display slot (intrinsic 1497×1514) */
+    <Image
       src={logoSrc}
       alt="Ríos de Vida — isotipo"
-      width="48"
-      height="48"
+      width={48}
+      height={48}
+      format="webp"
       class="h-12 w-12 object-contain"
       loading="eager"
       decoding="async"
-      onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
     />
   ) : (
-    /* Full logotype: PNG constrained to a readable header size.
-       The source is 1497×1514 (square-ish); we constrain height so the
-       wordmark and tagline inside the PNG remain legible without shipping
-       the full 1497px-wide bitmap into the header. */
-    <img
+    /* Full logotype: 80px display height (sm: 96px via CSS); intrinsic ratio
+       preserved by explicit width/height — eliminates CLS. */
+    <Image
       src={logoSrc}
       alt="Ríos de Vida — una gran familia"
-      height="80"
+      width={80}
+      height={81}
+      format="webp"
       class="h-16 w-auto object-contain sm:h-20"
       loading="eager"
       decoding="async"
-      onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
     />
   )}
 
-  {/* Typographic fallback — shown only when the PNG fails to load */}
-  <span
-    style="display: none;"
-    class="flex flex-col items-start gap-0.5"
-    aria-hidden="true"
-  >
-    <span class="font-brand text-sm font-light uppercase tracking-[0.2em] text-brand-gris">
-      Ríos de Vida
-    </span>
-    <span class="font-script text-xs text-brand-cian">
-      una gran familia
-    </span>
-  </span>
+  {/* Typographic fallback — visually hidden; shown only when JS is unavailable */}
+  <span class="sr-only">Ríos de Vida</span>
 </a>
