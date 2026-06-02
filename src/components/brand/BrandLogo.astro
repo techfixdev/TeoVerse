@@ -1,0 +1,58 @@
+---
+/**
+ * BrandLogo — Ríos de Vida logotype component.
+ *
+ * Renders the logo through astro:assets <Image> (sharp-processed WebP,
+ * explicit width+height to prevent CLS). Falls back to a typographic
+ * wordmark if the asset fails to load.
+ *
+ * Props:
+ *   isotypeOnly — when true, shows the logo at a compact isotipo size.
+ *   class       — additional Tailwind classes forwarded to the wrapper element.
+ */
+import { Image } from 'astro:assets';
+import logoSrc from '@/assets/brand/rios-de-vida-logo.png';
+
+interface Props {
+  isotypeOnly?: boolean;
+  class?: string;
+}
+
+const { isotypeOnly = false, class: extraClass = '' } = Astro.props;
+---
+
+<a
+  href="/"
+  class:list={['inline-flex items-center gap-2 no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-cianDark focus-visible:ring-offset-2 rounded-brand', extraClass]}
+  aria-label="Ríos de Vida — inicio"
+>
+  {isotypeOnly ? (
+    /* Isotipo-only mode: constrained to 48×48 display slot (intrinsic 1497×1514) */
+    <Image
+      src={logoSrc}
+      alt="Ríos de Vida — isotipo"
+      width={48}
+      height={48}
+      format="webp"
+      class="h-12 w-12 object-contain"
+      loading="eager"
+      decoding="async"
+    />
+  ) : (
+    /* Full logotype: 80px display height (sm: 96px via CSS); intrinsic ratio
+       preserved by explicit width/height — eliminates CLS. */
+    <Image
+      src={logoSrc}
+      alt="Ríos de Vida — una gran familia"
+      width={80}
+      height={81}
+      format="webp"
+      class="h-16 w-auto object-contain sm:h-20"
+      loading="eager"
+      decoding="async"
+    />
+  )}
+
+  {/* Typographic fallback — visually hidden; shown only when JS is unavailable */}
+  <span class="sr-only">Ríos de Vida</span>
+</a>

@@ -1,0 +1,119 @@
+---
+/**
+ * WorkspaceLayout — branded document shell for Bible study workspace pages.
+ *
+ * This layout owns the full document structure (<html>, <head>, <body>).
+ * It is used by the Bible chapter reader page. MainLayout stays untouched for
+ * index/buscar/atribuciones pages.
+ *
+ * The layout:
+ * 1. Sets data-version / data-libro / data-capitulo on <html> so that the
+ *    ReferenciaSeed script can seed $referencia from the DOM.
+ * 2. Injects the no-shift bootstrap script in <head> (runs before first paint).
+ * 3. Self-hosts brand fonts (Inter + Caveat) via @fontsource — no CDN dependency.
+ * 4. Provides a branded header (BrandLogo + nav), the workspace grid (reading
+ *    region + panels aside), and a footer with attribution + tagline.
+ * 5. Mounts ReferenciaSeed to wire $referencia from data-*.
+ *
+ * Slots:
+ *   default  — main reading content (the chapter article).
+ *   panels   — optional panel islands (used by PR 3b Strong panel).
+ */
+
+import '../styles/global.css';
+// Self-hosted fonts — Inter (UI chrome) + Caveat (script tagline only).
+// font-display:swap is baked in by @fontsource; no third-party CDN required.
+import '@fontsource/inter/300.css';
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/500.css';
+import '@fontsource/inter/600.css';
+import '@fontsource/inter/700.css';
+import '@fontsource/caveat/400.css';
+import '@fontsource/caveat/500.css';
+import BrandLogo from '@/components/brand/BrandLogo.astro';
+import ReferenciaSeed from '@/components/workspace/ReferenciaSeed.astro';
+import { bootstrapScript } from '@/components/workspace/bootstrap';
+
+interface Props {
+  title?:       string;
+  description?: string;
+  version?:     string;
+  libro?:       string;
+  capitulo?:    number | string;
+}
+
+const {
+  title       = 'TeoVerse | Estudio bíblico',
+  description = 'Estudio bíblico modular con diccionario Strong y léxicos.',
+  version     = '',
+  libro       = '',
+  capitulo    = '',
+} = Astro.props;
+---
+
+<!doctype html>
+<html
+  lang="es"
+  class="h-full"
+  data-version={version}
+  data-libro={libro}
+  data-capitulo={String(capitulo)}
+>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="description" content={description} />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+
+    {/* No-shift workspace bootstrap — runs synchronously before first paint.
+        Reads localStorage and applies ws-{id}-open/closed classes on <html>
+        so CSS can show/hide panels without layout shift. */}
+    <script is:inline set:html={bootstrapScript} />
+  </head>
+
+  <body class="font-brand min-h-screen antialiased bg-[color:var(--brand-base)] text-[color:var(--brand-text)]">
+
+    {/* Brand header */}
+    <header class="workspace-chrome sticky top-0 z-40 border-b border-brand-grisSuave/30 bg-white/90 backdrop-blur-sm dark:bg-[#0E1A1F]/90 dark:border-white/10">
+      <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-2 sm:px-6">
+        <BrandLogo />
+
+        <nav class="flex items-center gap-4 text-sm font-medium text-brand-gris" aria-label="Navegación principal">
+          <a class="rounded-sm transition hover:text-brand-cianDark focus-visible:text-brand-cianDark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-cianDark focus-visible:ring-offset-2" href="/">Inicio</a>
+          <a class="rounded-sm transition hover:text-brand-cianDark focus-visible:text-brand-cianDark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-cianDark focus-visible:ring-offset-2" href="/biblia">Biblioteca</a>
+          <a class="rounded-sm transition hover:text-brand-cianDark focus-visible:text-brand-cianDark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-cianDark focus-visible:ring-offset-2" href="/buscar">Buscar</a>
+          <a class="rounded-sm transition hover:text-brand-cianDark focus-visible:text-brand-cianDark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-cianDark focus-visible:ring-offset-2" href="/atribuciones">Atribuciones</a>
+        </nav>
+      </div>
+    </header>
+
+    {/* Workspace grid — mobile: single column; lg: reading + aside panel region */}
+    <div class="workspace-grid mx-auto max-w-7xl px-4 py-6 sm:px-6 gap-6">
+      <main class="module-lectura min-w-0">
+        <slot />
+      </main>
+
+      <aside class="workspace-panels" aria-label="Paneles de estudio">
+        <slot name="panels" />
+      </aside>
+    </div>
+
+    {/* Brand footer */}
+    <footer class="workspace-chrome mt-8 border-t border-brand-grisSuave/30 bg-white/60 dark:bg-[#0E1A1F]/60">
+      <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 flex flex-col items-center gap-2 text-center text-sm text-brand-gris">
+        <span class="font-script text-base text-brand-cianDark">una gran familia</span>
+        <p>
+          TeoVerse — estudio bíblico modular.
+          <a class="underline decoration-brand-grisSuave underline-offset-4 hover:text-brand-cianDark transition" href="/atribuciones">
+            Ver atribuciones
+          </a>.
+        </p>
+      </div>
+    </footer>
+
+    {/* ReferenciaSeed: reads data-* from <html> and seeds $referencia store.
+        Its <script> runs on parse; no hydration directive needed (.astro). */}
+    <ReferenciaSeed />
+
+  </body>
+</html>

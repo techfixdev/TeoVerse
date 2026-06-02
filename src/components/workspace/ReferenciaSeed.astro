@@ -1,0 +1,33 @@
+---
+/**
+ * ReferenciaSeed — client:load island.
+ *
+ * Reads the data-version / data-libro / data-capitulo attributes injected by
+ * WorkspaceLayout onto <html> and seeds $referencia once on load.
+ *
+ * Why a separate island and not the bootstrap inline script?
+ * The inline script cannot import ES modules (nanostores); seeding the store
+ * requires the bundled store module. client:load ensures the store is seeded
+ * as early as possible (before client:idle islands mount).
+ *
+ * This is a render-nothing island — it produces no visible markup.
+ */
+---
+
+<script>
+  import { $referencia } from '@/stores/referencia';
+
+  function seed() {
+    const html = document.documentElement;
+    const version  = html.dataset.version  ?? null;
+    const libro    = html.dataset.libro    ?? null;
+    const capitulo = html.dataset.capitulo ?? null;
+
+    if (version && libro && capitulo) {
+      $referencia.set({ version, libro, capitulo: Number(capitulo) });
+    }
+  }
+
+  // Seed immediately — WorkspaceLayout sets data-* before first paint.
+  seed();
+</script>

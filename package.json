@@ -28,6 +28,8 @@
   "dependencies": {
     "@astrojs/tailwind": "^6.0.2",
     "@astrojs/vercel": "^9.0.5",
+    "@fontsource/caveat": "^5.2.8",
+    "@fontsource/inter": "^5.2.8",
     "@libsql/client": "latest",
     "@lucide/astro": "latest",
     "@nanostores/persistent": "^1.3.4",
@@ -36,6 +38,7 @@
     "drizzle-orm": "latest",
     "fflate": "^0.8.3",
     "nanostores": "^1.3.0",
+    "sharp": "^0.34.5",
     "tailwind-merge": "latest"
   },
   "devDependencies": {

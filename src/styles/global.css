@@ -5,17 +5,130 @@
 @layer base {
   :root {
     color-scheme: light;
+
+    /* Ríos de Vida brand palette */
+    --brand-cian:       #19ADD3;
+    --brand-cian-dark:  #0E7FA3; /* AA-compliant for text on white (4.58:1) */
+    --brand-cian-claro: #81D8EB;
+    --brand-gris:       #767676; /* AA-compliant for text on white (4.54:1) */
+    --brand-gris-suave: #B7B7B7;
+    --brand-base:       #FFFFFF;
+    /* Slightly darker than gris for legible body text on white */
+    --brand-text:       #4A4A4A;
+
+    /* Header height — single source of truth for scroll-margin and sticky offsets.
+       5rem (80px) mobile; overridden at sm to 6rem (96px). */
+    --header-h: 5rem;
   }
 
+  @media (min-width: 640px) {
+    :root {
+      --header-h: 6rem;
+    }
+  }
+
+  /* Conservative cian-tinted dark mapping — manual is light-only;
+     keeps existing dark: utilities working without being raw slate. */
   .dark {
     color-scheme: dark;
+    --brand-base: #0E1A1F;
+    --brand-text: #E6F4F8;
   }
 
+  /* html background matches brand-base to prevent iOS overscroll grey flash */
   html {
-    @apply bg-slate-50 text-slate-950 antialiased dark:bg-slate-950 dark:text-slate-100;
+    background-color: var(--brand-base);
+    @apply text-slate-950 antialiased dark:text-slate-100;
+  }
+
+  /* Dark-mode html background follows brand-base */
+  html.dark {
+    background-color: var(--brand-base);
   }
 
   body {
     @apply min-h-screen;
   }
+
+  /* Verse deep-link offset — ensures #v{n} anchors clear the sticky header.
+     Applies to all verse <li id="v{n}"> elements in the reader page. */
+  ol.font-reading > li[id^="v"] {
+    scroll-margin-top: var(--header-h);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Workspace panel layout
+ * Driven by html.ws-{id}-open/closed classes set by bootstrap.ts pre-paint.
+ * PR 3a: layout skeleton only — panels slot is empty until PR 3b mounts islands.
+ * --------------------------------------------------------------------------- */
+
+/* Hide workspace chrome until bootstrap has applied classes (avoids FOUC) */
+html:not(.ws-workspace-ready) .workspace-chrome {
+  display: none;
+}
+
+/* Workspace grid: mobile-first single column; lg: reading + aside side panel */
+.workspace-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto;
+  min-height: 0;
+}
+
+@media (min-width: 1024px) {
+  .workspace-grid {
+    grid-template-columns: minmax(0, 1fr) 360px;
+    grid-template-rows: 1fr;
+    align-items: start;
+  }
+}
+
+/* Module lectura region */
+.module-lectura {
+  min-height: 0;
+}
+
+/* Workspace panels aside — hidden on mobile until a panel is open */
+.workspace-panels {
+  display: none;
+}
+
+html.ws-strong-open .workspace-panels {
+  display: block;
+}
+
+@media (min-width: 1024px) {
+  .workspace-panels {
+    display: block; /* always visible on desktop as a panel region */
+    position: sticky;
+    top: var(--header-h);          /* clears the sticky workspace header */
+    max-height: calc(100vh - var(--header-h));
+    overflow-y: auto;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Strong / interlinear word — style stub (finalized in PR 3b)
+ * Tokens with codigoStrong appear as inline button-like elements.
+ * --------------------------------------------------------------------------- */
+.palabra-strong {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  display: inline;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 2px;
+  transition: text-decoration-color 0.15s ease;
+}
+
+.palabra-strong:hover,
+.palabra-strong:focus-visible {
+  text-decoration-color: var(--brand-cian);
+  outline: none;
 }
