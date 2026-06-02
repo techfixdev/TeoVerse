@@ -4,7 +4,7 @@ Workspace de estudio bíblico modular estilo e-Sword sobre Astro 5 estático.
 Cambio SDD: `modular-study-workspace`. Entrega: PRs encadenados stacked-to-main,
 con judgment-day (revisión dual) por fase.
 
-> Última actualización: 2026-06-02 — PR 2b mergeado a `main` y deployado.
+> Última actualización: 2026-06-02 — PR 3b (panel Strong) mergeado a main y deployado; Phase 3 completa (slices 1 y 3).
 
 ## Arquitectura base (decidida)
 
@@ -23,7 +23,11 @@ con judgment-day (revisión dual) por fase.
 | **PR 1** | Foundation: contrato `ModuloRegistro` + `EstadoModulo` + stores nanostores (TS puro) | ✅ Mergeado |
 | **PR 2a** | Refactor de schema a catálogo `recursos` + `recurso_libros` (re-seed, no ALTER) | ✅ Mergeado |
 | **PR 2b** | Pipeline interlinear Strong: tabla `versiculos_tokens` + parser + endpoints | ✅ **Mergeado + deployado (PR #6, commit 54b2238)** |
-| **PR 3** | UI/UX del workspace con branding Ríos de Vida | ⏭️ Siguiente |
+| **PR 3a** | Workspace shell + branding Ríos de Vida | ✅ Mergeado (PR #8, commit 394a8b5) + deployado |
+| **PR 3b** | Panel Strong/interlinear + tokenización de versículos con click wiring | ✅ Mergeado (PR #9, merge commit 24e9392) + deployado |
+
+**Notas de Phase 3:** El slice 2 (module-ify de la lectura como `ModuloRegistro`) queda diferido como follow-up.
+Las 4 sugerencias de polish del judgment-day de PR 3b (empty paragraphs, `ws-strong-closed` comment, JSDoc stale, `aria-live` scope) se aplican en el commit de follow-up inmediato a continuación del merge de PR 3b.
 
 ## PR 2b — detalle (recién cerrado)
 

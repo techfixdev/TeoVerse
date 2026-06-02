@@ -163,6 +163,11 @@ html.ws-strong-open .strong-panel {
   display: flex;
 }
 
+/* ws-strong-closed is an intentional state marker with NO CSS effect:
+   mobile hides the panel via the base display:none above; desktop keeps the
+   panel always visible inside the workspace-panels aside by design.
+   Do not add display:none here — it would break the desktop layout. */
+
 /* Mobile: fixed bottom sheet */
 @media (max-width: 1023px) {
   .strong-panel {
@@ -282,6 +287,12 @@ html.ws-strong-open .strong-panel {
   font-size: 0.875rem;
   color: var(--brand-text);
   line-height: 1.6;
+}
+
+/* Suppress blank paragraphs when lema or definicion is absent in a lexicon entry */
+.strong-panel__lema:empty,
+.strong-panel__definicion:empty {
+  display: none;
 }
 
 .strong-panel__empty {
