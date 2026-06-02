@@ -1,0 +1,181 @@
+---
+/**
+ * StrongPanel — Strong / interlinear lexicon panel island.
+ *
+ * Mounted in the `panels` slot of WorkspaceLayout. Subscribes to `$senalStrong`
+ * via nanostores. On each signal:
+ *   1. Calls `actualizarModulo('strong', { habilitado: true, modo: 'normal' })`
+ *      to open the panel via $workspace (sets html.ws-strong-open via bootstrap
+ *      CSS classes on next interaction).
+ *   2. Fetches `/datos/strong/{lexiconSlug}/{codigoStrong}.json`.
+ *   3. Renders: clicked `palabra`, `codigoStrong` (always — survives 404/D7),
+ *      and on 200 → `lema` + `definicion`.
+ *
+ * States:
+ *   - Loading: spinner / "Buscando…"
+ *   - Loaded (200): code + palabra + lema + definicion
+ *   - Empty (404): code + palabra + "Sin definición para este código en el léxico activo"
+ *   - Error: "No se pudo cargar el léxico." with retry button
+ *   - Closed (modo: 'cerrado'): panel element hidden via CSS (ws-strong-closed)
+ *
+ * Open/close driven entirely through $workspace `modo` (locked contract).
+ * Mobile: fixed bottom sheet. Desktop (lg:): sticky side panel via workspace-panels aside.
+ *
+ * The <script> runs on parse; no client:* directive needed (.astro island pattern).
+ */
+---
+
+<div id="strong-panel" class="strong-panel" role="complementary" aria-label="Diccionario Strong" aria-live="polite">
+
+  {/* Panel header — always visible when panel is open */}
+  <div class="strong-panel__header">
+    <span class="strong-panel__title">Diccionario Strong</span>
+    <button
+      id="strong-panel-close"
+      class="strong-panel__close"
+      aria-label="Cerrar panel Strong"
+      type="button"
+    >
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M2 2L14 14M14 2L2 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+
+  {/* Panel body — dynamically updated by the script */}
+  <div id="strong-panel-body" class="strong-panel__body">
+    <p class="strong-panel__idle">Hacé clic en una palabra subrayada para ver su definición.</p>
+  </div>
+
+</div>
+
+<script>
+  import { $senalStrong } from '@/stores/referencia';
+  import { actualizarModulo } from '@/stores/workspace';
+  import { fetchEntrada } from '@/modules/strong/fetchEntrada';
+
+  const panel = document.getElementById('strong-panel');
+  const body  = document.getElementById('strong-panel-body');
+  const closeBtn = document.getElementById('strong-panel-close');
+
+  // -------------------------------------------------------------------------
+  // Open / close helpers
+  // -------------------------------------------------------------------------
+
+  function openPanel() {
+    actualizarModulo('strong', { habilitado: true, modo: 'normal' });
+    // Immediately reflect in DOM for CSS (ws-strong-open/closed classes on <html>)
+    document.documentElement.classList.add('ws-strong-open');
+    document.documentElement.classList.remove('ws-strong-closed');
+    panel?.removeAttribute('hidden');
+  }
+
+  function closePanel() {
+    actualizarModulo('strong', { habilitado: false, modo: 'cerrado' });
+    document.documentElement.classList.remove('ws-strong-open');
+    document.documentElement.classList.add('ws-strong-closed');
+    panel?.setAttribute('hidden', '');
+  }
+
+  // -------------------------------------------------------------------------
+  // Render helpers
+  // -------------------------------------------------------------------------
+
+  function renderLoading(palabra: string, codigo: string) {
+    if (!body) return;
+    body.innerHTML = `
+      <p class="strong-panel__codigo">${escHtml(codigo)}</p>
+      <p class="strong-panel__palabra">${escHtml(palabra)}</p>
+      <p class="strong-panel__loading" aria-live="polite">Buscando…</p>
+    `;
+  }
+
+  function renderEntry(palabra: string, codigo: string, lema: string, definicion: string) {
+    if (!body) return;
+    body.innerHTML = `
+      <p class="strong-panel__codigo">${escHtml(codigo)}</p>
+      <p class="strong-panel__palabra">${escHtml(palabra)}</p>
+      <p class="strong-panel__lema">${escHtml(lema)}</p>
+      <p class="strong-panel__definicion">${escHtml(definicion)}</p>
+    `;
+  }
+
+  function renderEmpty(palabra: string, codigo: string) {
+    if (!body) return;
+    body.innerHTML = `
+      <p class="strong-panel__codigo">${escHtml(codigo)}</p>
+      <p class="strong-panel__palabra">${escHtml(palabra)}</p>
+      <p class="strong-panel__empty">Sin definición para este código en el léxico activo.</p>
+    `;
+  }
+
+  function renderError(palabra: string, codigo: string) {
+    if (!body) return;
+    body.innerHTML = `
+      <p class="strong-panel__codigo">${escHtml(codigo)}</p>
+      <p class="strong-panel__palabra">${escHtml(palabra)}</p>
+      <p class="strong-panel__error">No se pudo cargar el léxico.</p>
+      <button class="strong-panel__retry" type="button">Reintentar</button>
+    `;
+    body.querySelector('.strong-panel__retry')?.addEventListener('click', () => {
+      loadEntry(codigo, palabra);
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // Fetch + render pipeline
+  // -------------------------------------------------------------------------
+
+  async function loadEntry(codigoStrong: string, palabra: string) {
+    renderLoading(palabra, codigoStrong);
+    openPanel();
+
+    try {
+      const entrada = await fetchEntrada(codigoStrong);
+
+      if (entrada === null) {
+        renderEmpty(palabra, codigoStrong);
+      } else {
+        renderEntry(palabra, codigoStrong, entrada.lema, entrada.definicion);
+      }
+    } catch {
+      renderError(palabra, codigoStrong);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Utility
+  // -------------------------------------------------------------------------
+
+  function escHtml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // -------------------------------------------------------------------------
+  // Wire up store subscription
+  // -------------------------------------------------------------------------
+
+  $senalStrong.subscribe((senal) => {
+    if (!senal) return;
+    loadEntry(senal.codigoStrong, senal.palabra);
+  });
+
+  // Close button
+  closeBtn?.addEventListener('click', closePanel);
+
+  // Restore initial state from $workspace if previously open
+  import { $workspace } from '@/stores/workspace';
+  const wsState = $workspace.get();
+  const strongModulo = wsState.modulos['strong'];
+  if (strongModulo?.habilitado && strongModulo?.modo !== 'cerrado') {
+    panel?.removeAttribute('hidden');
+    document.documentElement.classList.add('ws-strong-open');
+  } else {
+    panel?.setAttribute('hidden', '');
+  }
+</script>
