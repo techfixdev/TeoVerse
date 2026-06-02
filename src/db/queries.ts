@@ -1,6 +1,6 @@
 import { and, asc, eq } from 'drizzle-orm';
 import { db } from './client';
-import { recursos, recursoLibros, libros, versiculos } from './schema';
+import { recursos, recursoLibros, libros, versiculos, versiculosTokens, diccionarioEntradas } from './schema';
 
 export type StaticChapterPath = {
   version: string;
@@ -237,6 +237,82 @@ export async function listBibleLibrary(): Promise<BibleLibraryVersion[]> {
   }
 
   return library;
+}
+
+export type ChapterToken = {
+  versiculo: number;
+  posicion: number;
+  palabra: string;
+  codigoStrong: string | null;
+};
+
+export async function listTokensForChapter(reference: ChapterReference): Promise<ChapterToken[]> {
+  const rows = await db
+    .select({
+      versiculo: versiculos.versiculo,
+      posicion: versiculosTokens.posicion,
+      palabra: versiculosTokens.palabra,
+      codigoStrong: versiculosTokens.codigoStrong,
+    })
+    .from(versiculosTokens)
+    .innerJoin(versiculos, eq(versiculosTokens.versiculoId, versiculos.id))
+    .innerJoin(recursos, eq(versiculos.recursoId, recursos.id))
+    .innerJoin(libros, eq(versiculos.libroId, libros.id))
+    .where(
+      and(
+        eq(recursos.slug, reference.version),
+        eq(libros.slug, reference.libro),
+        eq(versiculos.capitulo, reference.capitulo),
+      ),
+    )
+    .orderBy(asc(versiculos.versiculo), asc(versiculosTokens.posicion));
+
+  return rows;
+}
+
+export type DiccionarioEntradaResult = {
+  codigoStrong: string;
+  lema: string;
+  definicion: string;
+  recursoSlug: string;
+};
+
+export async function getDiccionarioEntrada(
+  codigoStrong: string,
+  lexiconSlug = 'strong-es',
+): Promise<DiccionarioEntradaResult | null> {
+  const row = await db
+    .select({
+      codigoStrong: diccionarioEntradas.codigoStrong,
+      lema: diccionarioEntradas.lema,
+      definicion: diccionarioEntradas.definicion,
+      recursoSlug: recursos.slug,
+    })
+    .from(diccionarioEntradas)
+    .innerJoin(recursos, eq(diccionarioEntradas.recursoId, recursos.id))
+    .where(and(eq(recursos.slug, lexiconSlug), eq(diccionarioEntradas.codigoStrong, codigoStrong)))
+    .get();
+
+  return row ?? null;
+}
+
+export type LexiconPath = {
+  lexiconSlug: string;
+  codigo: string;
+};
+
+export async function listStaticLexiconPaths(): Promise<LexiconPath[]> {
+  const rows = await db
+    .select({
+      lexiconSlug: recursos.slug,
+      codigo: diccionarioEntradas.codigoStrong,
+    })
+    .from(diccionarioEntradas)
+    .innerJoin(recursos, eq(diccionarioEntradas.recursoId, recursos.id))
+    .where(eq(recursos.tipo, 'diccionario'))
+    .orderBy(asc(recursos.slug), asc(diccionarioEntradas.codigoStrong));
+
+  return rows;
 }
 
 export async function listBibleAttributions(): Promise<BibleAttribution[]> {
