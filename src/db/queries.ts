@@ -261,6 +261,7 @@ export async function listTokensForChapter(reference: ChapterReference): Promise
     .where(
       and(
         eq(recursos.slug, reference.version),
+        eq(recursos.tipo, 'biblia'),
         eq(libros.slug, reference.libro),
         eq(versiculos.capitulo, reference.capitulo),
       ),

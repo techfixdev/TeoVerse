@@ -30,6 +30,10 @@ export async function fetchEntrada(
   codigoStrong: string,
   lexiconSlug = 'strong-es',
 ): Promise<EntradaStrong | null> {
+  if (!/^[GH]\d+$/i.test(codigoStrong)) {
+    throw new Error(`fetchEntrada: invalid codigoStrong format: "${codigoStrong}"`);
+  }
+
   const url = `/datos/strong/${lexiconSlug}/${codigoStrong}.json`;
   const response = await fetch(url);
 
