@@ -9,7 +9,7 @@ import { recursos, libros, recursoLibros, versiculos } from '../src/db/schema';
 import { parseUsfmBook } from '../src/importers/usfm';
 
 const sourceDir = path.resolve('sources', SPARVG_SOURCE.slug);
-const zipPath = path.join(sourceDir, 'sparvg_usfm.zip');
+const zipPath = path.join(sourceDir, `${SPARVG_SOURCE.slug}_usfm.zip`);
 
 export async function importSparvg() {
   const zip = await readOrDownloadZip();
@@ -75,10 +75,13 @@ export async function importSparvg() {
       createdLibro ?? (await db.select().from(libros).where(eq(libros.slug, book.slug)).get());
     if (!libro) throw new Error(`Could not create or load book ${book.slug}.`);
 
-    await db
-      .update(libros)
-      .set({ testamento: book.testament, nombre: book.name, abreviatura: book.abbreviation })
-      .where(eq(libros.id, libro.id));
+    // Only update when the row already existed (not freshly inserted by this importer).
+    if (!createdLibro) {
+      await db
+        .update(libros)
+        .set({ testamento: book.testament, nombre: book.name, abreviatura: book.abbreviation })
+        .where(eq(libros.id, libro.id));
+    }
 
     // Seed per-resource canon order via recurso_libros
     await db
