@@ -1,6 +1,9 @@
 ---
 import WorkspaceLayout from '@/layouts/WorkspaceLayout.astro';
-import { getChapter, getChapterNavigation, listStaticChapterPaths } from '@/db/queries';
+import StrongClickProxy from '@/components/workspace/StrongClickProxy.astro';
+import StrongPanel from '@/components/modules/StrongPanel.astro';
+import { getChapter, getChapterNavigation, listStaticChapterPaths, listTokensForChapter } from '@/db/queries';
+import type { ChapterToken } from '@/db/queries';
 
 export async function getStaticPaths() {
   const paths = await listStaticChapterPaths();
@@ -18,6 +21,22 @@ if (!chapter) {
 
 if (!navigation) {
   throw new Error(`No chapter navigation found for ${version}/${libro}/${capitulo}.`);
+}
+
+// Build-time token fetch for tokenized verse rendering.
+// Groups tokens by verse number in posicion order.
+// INVARIANT: tokens joined by spaces in posicion order reconstruct versiculo.texto byte-for-byte.
+const allTokens = await listTokensForChapter({ version: version!, libro: libro!, capitulo: Number(capitulo) });
+
+// Group tokens by verse number — Map<versiculo, ChapterToken[]>
+const tokensByVerse = new Map<number, ChapterToken[]>();
+for (const token of allTokens) {
+  let verseTokens = tokensByVerse.get(token.versiculo);
+  if (!verseTokens) {
+    verseTokens = [];
+    tokensByVerse.set(token.versiculo, verseTokens);
+  }
+  verseTokens.push(token);
 }
 ---
 
@@ -80,14 +99,42 @@ if (!navigation) {
     </nav>
 
     {/* Verse list — font-reading (Georgia) preserved for scripture readability.
-        Verse li id="v{n}" anchors kept byte-stable for #v{n} deep links. */}
+        Verse li id="v{n}" anchors kept byte-stable for #v{n} deep links.
+        Tokenized rendering: words with codigoStrong render as <button class="palabra-strong">
+        for Strong lookup; untagged words render as plain <span>.
+        Invariant: tokens joined by spaces in posicion order = versiculo.texto byte-for-byte. */}
     <ol class="mt-6 space-y-5 font-reading text-lg leading-8 text-[color:var(--brand-text)]">
-      {chapter.versiculos.map((versiculo) => (
-        <li id={`v${versiculo.numero}`} class="grid grid-cols-[2rem_1fr] gap-3">
-          <span class="pt-1 text-sm font-bold text-brand-cianDark">{versiculo.numero}</span>
-          <span>{versiculo.texto}</span>
-        </li>
-      ))}
+      {chapter.versiculos.map((versiculo) => {
+        const tokens = tokensByVerse.get(versiculo.numero);
+        return (
+          <li id={`v${versiculo.numero}`} class="grid grid-cols-[2rem_1fr] gap-3">
+            <span class="pt-1 text-sm font-bold text-brand-cianDark">{versiculo.numero}</span>
+            <span>
+              {tokens && tokens.length > 0 ? (
+                tokens.map((token, index) => (
+                  <>
+                    {token.codigoStrong ? (
+                      <button
+                        class="palabra-strong"
+                        type="button"
+                        data-strong={token.codigoStrong}
+                        data-palabra={token.palabra}
+                        aria-label={`${token.palabra} — código Strong ${token.codigoStrong}`}
+                      >{token.palabra}</button>
+                    ) : (
+                      <span>{token.palabra}</span>
+                    )}
+                    {index < tokens.length - 1 ? ' ' : ''}
+                  </>
+                ))
+              ) : (
+                /* Fallback: no tokens available — render raw verse text */
+                versiculo.texto
+              )}
+            </span>
+          </li>
+        );
+      })}
     </ol>
 
     {/* Attribution block */}
@@ -96,4 +143,12 @@ if (!navigation) {
       <a class="font-semibold underline decoration-brand-cianClaro underline-offset-4 hover:text-brand-cianDark transition" href="/atribuciones">Ver atribuciones</a>.
     </p>
   </article>
+
+  {/* Strong panel islands — mounted in the panels slot.
+      StrongClickProxy: event-delegation on .module-lectura; fires $senalStrong.
+      StrongPanel: subscribes to $senalStrong; fetches lexicon JSON; renders panel. */}
+  <Fragment slot="panels">
+    <StrongClickProxy />
+    <StrongPanel />
+  </Fragment>
 </WorkspaceLayout>
