@@ -6,16 +6,16 @@ import MainLayout from '@/layouts/MainLayout.astro';
 <MainLayout title="Ríos de Vida | Buscar">
   <main class="min-h-screen bg-slate-100 p-4 text-slate-950 dark:bg-slate-950 dark:text-slate-100 sm:p-6">
     <section class="mx-auto max-w-4xl rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-8">
-      <a class="text-sm font-semibold text-brand-cyan underline decoration-brand-cyan-light underline-offset-4 dark:text-brand-cyan-light" href="/">
+      <a class="text-sm font-semibold text-brand-cianDark underline decoration-brand-cianClaro underline-offset-4 dark:text-brand-cianClaro" href="/">
         Volver al inicio
       </a>
 
       <div class="mt-6 flex items-start gap-3">
-        <span class="rounded-2xl bg-brand-cyan-light/10 p-3 text-brand-cyan dark:bg-brand-cyan/10 dark:text-brand-cyan-light">
+        <span class="rounded-2xl bg-brand-cianClaro/10 p-3 text-brand-cianDark dark:bg-brand-cian/10 dark:text-brand-cianClaro">
           <Search class="h-6 w-6" aria-hidden="true" />
         </span>
         <div>
-          <p class="text-sm font-semibold uppercase tracking-[0.2em] text-brand-cyan dark:text-brand-cyan-light">Busqueda biblica</p>
+          <p class="text-sm font-semibold uppercase tracking-[0.2em] text-brand-cianDark dark:text-brand-cianClaro">Busqueda biblica</p>
           <h1 class="mt-2 text-3xl font-bold tracking-tight">Buscar en Ríos de Vida</h1>
           <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400">
             MVP estático sobre la Biblia completa spapddpt. La búsqueda corre en tu navegador desde un JSON generado durante el build.
@@ -29,12 +29,12 @@ import MainLayout from '@/layouts/MainLayout.astro';
           <input
             id="search-query"
             name="q"
-            class="min-h-12 flex-1 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base outline-none ring-brand-cyan transition focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+            class="min-h-12 flex-1 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base outline-none ring-brand-cian transition focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
             type="search"
             autocomplete="off"
             placeholder="Juan 3:16, reino, justicia..."
           />
-          <button class="rounded-2xl bg-brand-cyan px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-brand-cyan/90 focus:outline-none focus:ring-2 focus:ring-brand-cyan focus:ring-offset-2 dark:focus:ring-offset-slate-900" type="submit">
+          <button class="rounded-2xl bg-brand-cian px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-brand-cian/90 focus:outline-none focus:ring-2 focus:ring-brand-cian focus:ring-offset-2 dark:focus:ring-offset-slate-900" type="submit">
             Buscar
           </button>
         </div>
@@ -96,7 +96,7 @@ import MainLayout from '@/layouts/MainLayout.astro';
         item.className = 'rounded-2xl border border-slate-200 p-4 dark:border-slate-800';
 
         const link = document.createElement('a');
-        link.className = 'font-bold text-brand-cyan underline decoration-brand-cyan-light underline-offset-4 dark:text-brand-cyan-light';
+        link.className = 'font-bold text-brand-cianDark underline decoration-brand-cianClaro underline-offset-4 dark:text-brand-cianClaro';
         link.href = match.href;
         link.textContent = `${match.book} ${match.chapter}:${match.verse} (${match.version})`;
 
