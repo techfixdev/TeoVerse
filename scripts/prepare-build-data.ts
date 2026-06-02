@@ -12,6 +12,8 @@ runPnpmScript('db:push');
 runPnpmScript('db:seed');
 // import:spapddpt populates versiculos + versiculos_tokens (Strong interlinear pipeline)
 runPnpmScript('import:spapddpt');
+runPnpmScript('import:sparvg');
+runPnpmScript('import:sparv1909');
 
 function runPnpmScript(script: string) {
   const result = spawnSync('pnpm', ['run', script], {

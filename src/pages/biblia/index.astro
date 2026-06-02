@@ -6,26 +6,26 @@ import { listBibleLibrary } from '@/db/queries';
 const library = await listBibleLibrary();
 ---
 
-<MainLayout title="TeoVerse | Biblioteca bíblica">
+<MainLayout title="Ríos de Vida | Biblioteca bíblica">
   <main class="min-h-screen bg-slate-50 p-6 text-slate-950 dark:bg-slate-950 dark:text-slate-100">
     <section class="mx-auto max-w-5xl rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-8">
-      <nav class="flex flex-wrap gap-4 text-sm font-semibold text-indigo-600 dark:text-indigo-300" aria-label="Navegacion principal">
-        <a class="inline-flex items-center gap-2 underline decoration-indigo-200 underline-offset-4" href="/">
+      <nav class="flex flex-wrap gap-4 text-sm font-semibold text-brand-cyan dark:text-brand-cyan-light" aria-label="Navegacion principal">
+        <a class="inline-flex items-center gap-2 underline decoration-brand-cyan-light underline-offset-4" href="/">
           <House class="h-4 w-4" aria-hidden="true" />
           Inicio
         </a>
-        <a class="inline-flex items-center gap-2 underline decoration-indigo-200 underline-offset-4" href="/buscar">
+        <a class="inline-flex items-center gap-2 underline decoration-brand-cyan-light underline-offset-4" href="/buscar">
           <Search class="h-4 w-4" aria-hidden="true" />
           Buscar
         </a>
-        <a class="inline-flex items-center gap-2 underline decoration-indigo-200 underline-offset-4" href="/atribuciones">
+        <a class="inline-flex items-center gap-2 underline decoration-brand-cyan-light underline-offset-4" href="/atribuciones">
           <ScrollText class="h-4 w-4" aria-hidden="true" />
           Atribuciones
         </a>
       </nav>
 
       <header class="mt-8 border-b border-slate-200 pb-6 dark:border-slate-800">
-        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400">Biblioteca</p>
+        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-brand-cyan dark:text-brand-cyan-light">Biblioteca</p>
         <h1 class="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">Biblia</h1>
         <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
           Versiones, libros y capítulos disponibles para lectura estática. Cada enlace apunta a una página generada en build time.
@@ -36,7 +36,7 @@ const library = await listBibleLibrary();
         {library.map((version) => (
           <section class="rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950/60" aria-labelledby={`version-${version.slug}`}>
             <div class="flex items-center gap-3">
-              <BookOpen class="h-5 w-5 text-indigo-600 dark:text-indigo-300" aria-hidden="true" />
+              <BookOpen class="h-5 w-5 text-brand-cyan dark:text-brand-cyan-light" aria-hidden="true" />
               <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{version.slug}</p>
                 <h2 id={`version-${version.slug}`} class="text-xl font-bold">{version.nombre}</h2>
@@ -50,7 +50,7 @@ const library = await listBibleLibrary();
                   <ul class="mt-3 flex flex-wrap gap-2" aria-label={`Capítulos de ${book.nombre}`}>
                     {book.chapters.map((chapter) => (
                       <li>
-                        <a class="inline-flex rounded-full border border-indigo-200 px-3 py-1 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-200 dark:hover:bg-indigo-950/50" href={chapter.href}>
+                        <a class="inline-flex rounded-full border border-brand-cyan-light px-3 py-1 text-sm font-semibold text-brand-cyan hover:bg-brand-cyan-light/20 dark:border-brand-cyan/40 dark:text-brand-cyan-light dark:hover:bg-brand-cyan/10" href={chapter.href}>
                           Capítulo {chapter.capitulo}
                         </a>
                       </li>
