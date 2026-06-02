@@ -21,6 +21,15 @@
  */
 
 import '../styles/global.css';
+// Self-hosted fonts — Inter (UI chrome) + Caveat (script tagline only).
+// font-display:swap is baked in by @fontsource; no third-party CDN required.
+import '@fontsource/inter/300.css';
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/500.css';
+import '@fontsource/inter/600.css';
+import '@fontsource/inter/700.css';
+import '@fontsource/caveat/400.css';
+import '@fontsource/caveat/500.css';
 import BrandLogo from '@/components/brand/BrandLogo.astro';
 import ReferenciaSeed from '@/components/workspace/ReferenciaSeed.astro';
 import { bootstrapScript } from '@/components/workspace/bootstrap';
@@ -56,23 +65,13 @@ const {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{title}</title>
 
-    {/* Brand fonts — Inter (UI chrome) + Caveat (script tagline only).
-        font-display:swap prevents invisible text during load.
-        Preconnect shaves DNS + TLS latency on first request. */}
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Caveat:wght@400;500&display=swap"
-      rel="stylesheet"
-    />
-
     {/* No-shift workspace bootstrap — runs synchronously before first paint.
         Reads localStorage and applies ws-{id}-open/closed classes on <html>
         so CSS can show/hide panels without layout shift. */}
     <script is:inline set:html={bootstrapScript} />
   </head>
 
-  <body class="font-brand min-h-screen antialiased" style="background-color: var(--brand-base); color: var(--brand-text);">
+  <body class="font-brand min-h-screen antialiased bg-[color:var(--brand-base)] text-[color:var(--brand-text)]">
 
     {/* Brand header */}
     <header class="workspace-chrome sticky top-0 z-40 border-b border-brand-grisSuave/30 bg-white/90 backdrop-blur-sm dark:bg-[#0E1A1F]/90 dark:border-white/10">
@@ -80,10 +79,10 @@ const {
         <BrandLogo />
 
         <nav class="flex items-center gap-4 text-sm font-medium text-brand-gris" aria-label="Navegación principal">
-          <a class="transition hover:text-brand-cian focus-visible:text-brand-cian" href="/">Inicio</a>
-          <a class="transition hover:text-brand-cian focus-visible:text-brand-cian" href="/biblia">Biblioteca</a>
-          <a class="transition hover:text-brand-cian focus-visible:text-brand-cian" href="/buscar">Buscar</a>
-          <a class="transition hover:text-brand-cian focus-visible:text-brand-cian" href="/atribuciones">Atribuciones</a>
+          <a class="rounded-sm transition hover:text-brand-cian focus-visible:text-brand-cian focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-cian focus-visible:ring-offset-2" href="/">Inicio</a>
+          <a class="rounded-sm transition hover:text-brand-cian focus-visible:text-brand-cian focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-cian focus-visible:ring-offset-2" href="/biblia">Biblioteca</a>
+          <a class="rounded-sm transition hover:text-brand-cian focus-visible:text-brand-cian focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-cian focus-visible:ring-offset-2" href="/buscar">Buscar</a>
+          <a class="rounded-sm transition hover:text-brand-cian focus-visible:text-brand-cian focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-cian focus-visible:ring-offset-2" href="/atribuciones">Atribuciones</a>
         </nav>
       </div>
     </header>
