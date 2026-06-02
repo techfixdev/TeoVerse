@@ -25,7 +25,7 @@
  */
 ---
 
-<div id="strong-panel" class="strong-panel" role="complementary" aria-label="Diccionario Strong" aria-live="polite">
+<div id="strong-panel" class="strong-panel" role="complementary" aria-label="Diccionario Strong" aria-live="polite" hidden>
 
   {/* Panel header — always visible when panel is open */}
   <div class="strong-panel__header">
@@ -44,14 +44,14 @@
 
   {/* Panel body — dynamically updated by the script */}
   <div id="strong-panel-body" class="strong-panel__body">
-    <p class="strong-panel__idle">Hacé clic en una palabra subrayada para ver su definición.</p>
+    <p class="strong-panel__idle">Haz clic en una palabra subrayada para ver su definición.</p>
   </div>
 
 </div>
 
 <script>
   import { $senalStrong } from '@/stores/referencia';
-  import { actualizarModulo } from '@/stores/workspace';
+  import { actualizarModulo, $workspace } from '@/stores/workspace';
   import { fetchEntrada } from '@/modules/strong/fetchEntrada';
 
   const panel = document.getElementById('strong-panel');
@@ -86,7 +86,7 @@
     body.innerHTML = `
       <p class="strong-panel__codigo">${escHtml(codigo)}</p>
       <p class="strong-panel__palabra">${escHtml(palabra)}</p>
-      <p class="strong-panel__loading" aria-live="polite">Buscando…</p>
+      <p class="strong-panel__loading">Buscando…</p>
     `;
   }
 
@@ -126,12 +126,16 @@
   // Fetch + render pipeline
   // -------------------------------------------------------------------------
 
+  let loadGeneration = 0;
+
   async function loadEntry(codigoStrong: string, palabra: string) {
+    const generation = ++loadGeneration;
     renderLoading(palabra, codigoStrong);
     openPanel();
 
     try {
       const entrada = await fetchEntrada(codigoStrong);
+      if (generation !== loadGeneration) return;
 
       if (entrada === null) {
         renderEmpty(palabra, codigoStrong);
@@ -139,6 +143,7 @@
         renderEntry(palabra, codigoStrong, entrada.lema, entrada.definicion);
       }
     } catch {
+      if (generation !== loadGeneration) return;
       renderError(palabra, codigoStrong);
     }
   }
@@ -160,16 +165,19 @@
   // Wire up store subscription
   // -------------------------------------------------------------------------
 
-  $senalStrong.subscribe((senal) => {
+  const unsubscribeSenal = $senalStrong.subscribe((senal) => {
     if (!senal) return;
     loadEntry(senal.codigoStrong, senal.palabra);
   });
+
+  window.addEventListener('pagehide', () => {
+    unsubscribeSenal();
+  }, { once: true });
 
   // Close button
   closeBtn?.addEventListener('click', closePanel);
 
   // Restore initial state from $workspace if previously open
-  import { $workspace } from '@/stores/workspace';
   const wsState = $workspace.get();
   const strongModulo = wsState.modulos['strong'];
   if (strongModulo?.habilitado && strongModulo?.modo !== 'cerrado') {
