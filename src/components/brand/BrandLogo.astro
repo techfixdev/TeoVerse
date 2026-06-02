@@ -1,0 +1,70 @@
+---
+/**
+ * BrandLogo — Ríos de Vida logotype component.
+ *
+ * Renders the real logo PNG asset (public/brand/rios-de-vida-logo.png)
+ * with a typographic fallback if the asset is unavailable.
+ *
+ * Props:
+ *   isotypeOnly — when true, shows the logo image cropped to its isotipo square
+ *                 (useful for compact headers or favicon-adjacent use cases).
+ *   class       — additional Tailwind classes forwarded to the wrapper element.
+ */
+interface Props {
+  isotypeOnly?: boolean;
+  class?: string;
+}
+
+const { isotypeOnly = false, class: extraClass = '' } = Astro.props;
+
+// Logo asset path — served from public/ at build time.
+const logoSrc = '/brand/rios-de-vida-logo.png';
+---
+
+<a
+  href="/"
+  class:list={['inline-flex items-center gap-2 no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-cian focus-visible:ring-offset-2 rounded-brand', extraClass]}
+  aria-label="Ríos de Vida — inicio"
+>
+  {isotypeOnly ? (
+    /* Isotipo-only mode: render just the image at a small fixed size */
+    <img
+      src={logoSrc}
+      alt="Ríos de Vida — isotipo"
+      width="48"
+      height="48"
+      class="h-12 w-12 object-contain"
+      loading="eager"
+      decoding="async"
+      onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+    />
+  ) : (
+    /* Full logotype: PNG constrained to a readable header size.
+       The source is 1497×1514 (square-ish); we constrain height so the
+       wordmark and tagline inside the PNG remain legible without shipping
+       the full 1497px-wide bitmap into the header. */
+    <img
+      src={logoSrc}
+      alt="Ríos de Vida — una gran familia"
+      height="80"
+      class="h-16 w-auto object-contain sm:h-20"
+      loading="eager"
+      decoding="async"
+      onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+    />
+  )}
+
+  {/* Typographic fallback — shown only when the PNG fails to load */}
+  <span
+    style="display: none;"
+    class="flex flex-col items-start gap-0.5"
+    aria-hidden="true"
+  >
+    <span class="font-brand text-sm font-light uppercase tracking-[0.2em] text-brand-gris">
+      Ríos de Vida
+    </span>
+    <span class="font-script text-xs text-brand-cian">
+      una gran familia
+    </span>
+  </span>
+</a>
