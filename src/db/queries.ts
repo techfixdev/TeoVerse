@@ -169,7 +169,7 @@ export async function getChapterNavigation(reference: ChapterReference): Promise
     .innerJoin(recursos, eq(versiculos.recursoId, recursos.id))
     .innerJoin(libros, eq(versiculos.libroId, libros.id))
     .innerJoin(recursoLibros, and(eq(recursoLibros.recursoId, recursos.id), eq(recursoLibros.libroId, libros.id)))
-    .where(eq(recursos.tipo, 'biblia'))
+    .where(and(eq(recursos.tipo, 'biblia'), eq(recursos.slug, reference.version)))
     .groupBy(recursos.slug, recursoLibros.orden, libros.slug, libros.nombre, versiculos.capitulo)
     .orderBy(asc(recursos.slug), asc(recursoLibros.orden), asc(versiculos.capitulo));
 

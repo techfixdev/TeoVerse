@@ -85,8 +85,8 @@ export function parseUsfmBook(usfm: string): ParsedUsfmBook {
 
   if (!book.id) throw new Error('USFM book is missing an \\id marker.');
   if (!book.toc1) throw new Error('USFM book is missing a \\toc1 marker.');
-  if (!book.toc2) book.toc2 = book.toc1;
-  if (!book.toc3) book.toc3 = book.toc2;
+  if (!book.toc2) { console.warn(`[usfm] ${book.id}: missing \\toc2, falling back to toc1`); book.toc2 = book.toc1; }
+  if (!book.toc3) { console.warn(`[usfm] ${book.id}: missing \\toc3, falling back to toc2`); book.toc3 = book.toc2; }
 
   return {
     book: book as UsfmBookMetadata,

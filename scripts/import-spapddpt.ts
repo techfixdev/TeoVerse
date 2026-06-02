@@ -9,7 +9,7 @@ import { recursos, libros, recursoLibros, versiculos, versiculosTokens } from '.
 import { parseUsfmBook, parseUsfmBookInterlinear } from '../src/importers/usfm';
 
 const sourceDir = path.resolve('sources', SPAPDDPT_SOURCE.slug);
-const zipPath = path.join(sourceDir, 'spapddpt_usfm.zip');
+const zipPath = path.join(sourceDir, `${SPAPDDPT_SOURCE.slug}_usfm.zip`);
 
 export async function importSpapddpt() {
   const zip = await readOrDownloadZip();
@@ -97,10 +97,13 @@ export async function importSpapddpt() {
       createdLibro ?? (await db.select().from(libros).where(eq(libros.slug, book.slug)).get());
     if (!libro) throw new Error(`Could not create or load book ${book.slug}.`);
 
-    await db
-      .update(libros)
-      .set({ testamento: book.testament, nombre: book.name, abreviatura: book.abbreviation })
-      .where(eq(libros.id, libro.id));
+    // Only update when the row already existed (not freshly inserted by this importer).
+    if (!createdLibro) {
+      await db
+        .update(libros)
+        .set({ testamento: book.testament, nombre: book.name, abreviatura: book.abbreviation })
+        .where(eq(libros.id, libro.id));
+    }
 
     // Seed per-resource canon order via recurso_libros (order comes from manifest's book.order)
     await db

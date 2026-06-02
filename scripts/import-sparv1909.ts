@@ -75,10 +75,13 @@ export async function importSparv1909() {
       createdLibro ?? (await db.select().from(libros).where(eq(libros.slug, book.slug)).get());
     if (!libro) throw new Error(`Could not create or load book ${book.slug}.`);
 
-    await db
-      .update(libros)
-      .set({ testamento: book.testament, nombre: book.name, abreviatura: book.abbreviation })
-      .where(eq(libros.id, libro.id));
+    // Only update when the row already existed (not freshly inserted by this importer).
+    if (!createdLibro) {
+      await db
+        .update(libros)
+        .set({ testamento: book.testament, nombre: book.name, abreviatura: book.abbreviation })
+        .where(eq(libros.id, libro.id));
+    }
 
     // Seed per-resource canon order via recurso_libros
     await db
