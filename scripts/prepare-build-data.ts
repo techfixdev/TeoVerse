@@ -14,6 +14,8 @@ runPnpmScript('db:seed');
 runPnpmScript('import:spapddpt');
 runPnpmScript('import:sparvg');
 runPnpmScript('import:sparv1909');
+// import:mensaje parsea el HTML "El Mensaje" (Ríos de Vida); paráfrasis sin Strong.
+runPnpmScript('import:mensaje');
 
 function runPnpmScript(script: string) {
   const result = spawnSync('pnpm', ['run', script], {
