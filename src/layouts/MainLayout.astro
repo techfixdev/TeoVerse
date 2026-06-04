@@ -6,6 +6,7 @@ import '@fontsource/inter/400.css';
 import '@fontsource/inter/500.css';
 import '@fontsource/inter/600.css';
 import '@fontsource/inter/700.css';
+import BrandLogo from '@/components/brand/BrandLogo.astro';
 
 interface Props {
   title?: string;
@@ -32,6 +33,36 @@ const {
     <title>{title}</title>
   </head>
   <body class="h-full bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-100">
+    <header class="border-b border-slate-200 bg-white/80 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-950/80">
+      <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
+        <BrandLogo isotypeOnly class="shrink-0" />
+        <a
+          class="text-sm font-semibold text-brand-cianDark underline decoration-brand-cianClaro underline-offset-4 dark:text-brand-cianClaro"
+          href="/atribuciones"
+        >
+          Atribuciones
+        </a>
+      </div>
+    </header>
+
     <slot />
+
+    <footer class="border-t border-slate-200 bg-white/60 py-8 dark:border-slate-800 dark:bg-slate-950/60">
+      <div class="mx-auto flex max-w-6xl flex-col items-center gap-3 px-4 text-center text-sm text-slate-600 dark:text-slate-400 sm:px-6">
+        <BrandLogo class="h-12" />
+        <p>
+          Ríos de Vida — estudio bíblico modular.
+          <a
+            class="font-semibold text-brand-cianDark underline decoration-brand-cianClaro underline-offset-4 dark:text-brand-cianClaro"
+            href="/atribuciones"
+          >
+            Ver atribuciones y licencias
+          </a>.
+        </p>
+        <p class="text-xs text-slate-500 dark:text-slate-500">
+          El texto bíblico se atribuye a sus respectivas fuentes (eBible.org y otros).
+        </p>
+      </div>
+    </footer>
   </body>
 </html>
