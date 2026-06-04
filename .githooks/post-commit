@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# .githooks/post-commit (TeoVerse)
+# Auto-sync Engram Cloud after every commit.
+# Failures are silent — a cloud outage must NEVER block a commit.
+
+set +e
+
+ENGRAM_BIN="$USERPROFILE/bin/engram.exe"
+PROJECT_NAME="teoverse"
+
+# Token resolution order:
+#   1. ENGRAM_CLOUD_TOKEN already in env
+#   2. User-scope env var via PowerShell (persists across sessions)
+if [ -z "$ENGRAM_CLOUD_TOKEN" ]; then
+  TOKEN_FROM_USER=$(powershell.exe -NoProfile -Command "[System.Environment]::GetEnvironmentVariable('ENGRAM_CLOUD_TOKEN','User')" 2>/dev/null | tr -d '\r\n')
+  if [ -n "$TOKEN_FROM_USER" ]; then
+    export ENGRAM_CLOUD_TOKEN="$TOKEN_FROM_USER"
+  fi
+fi
+
+# No token => no sync, but commit must still succeed.
+if [ -z "$ENGRAM_CLOUD_TOKEN" ]; then
+  exit 0
+fi
+
+# Enroll lazily (idempotent at the server).
+"$ENGRAM_BIN" cloud enroll "$PROJECT_NAME" >/dev/null 2>&1
+
+# Push everything new since the last sync. The cloud is delta-aware.
+"$ENGRAM_BIN" sync --cloud --project "$PROJECT_NAME" >/dev/null 2>&1
+
+exit 0
