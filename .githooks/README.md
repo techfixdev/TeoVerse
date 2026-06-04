@@ -19,4 +19,4 @@ The hook lives in this directory and is tracked by git so that any clone +
 `git config core.hooksPath .githooks` gets the automation for free.
 
 **Last verified**: 2026-06-04 — end-to-end test with a sentinel observation
-pushed to the cloud via this hook.
+pushed to the cloud via this hook. Log: `~/.engram/post-commit.log`.
