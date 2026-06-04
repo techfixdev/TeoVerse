@@ -7,6 +7,15 @@ set +e
 
 ENGRAM_BIN="$USERPROFILE/bin/engram.exe"
 PROJECT_NAME="teoverse"
+LOG_FILE="$USERPROFILE/.engram/post-commit.log"
+
+mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null
+
+log() {
+  echo "[$(date -Iseconds 2>/dev/null || date)] $*" >> "$LOG_FILE" 2>/dev/null
+}
+
+log "post-commit fired for project=$PROJECT_NAME rev=$(git rev-parse --short HEAD)"
 
 # Token resolution order:
 #   1. ENGRAM_CLOUD_TOKEN already in env
@@ -15,18 +24,22 @@ if [ -z "$ENGRAM_CLOUD_TOKEN" ]; then
   TOKEN_FROM_USER=$(powershell.exe -NoProfile -Command "[System.Environment]::GetEnvironmentVariable('ENGRAM_CLOUD_TOKEN','User')" 2>/dev/null | tr -d '\r\n')
   if [ -n "$TOKEN_FROM_USER" ]; then
     export ENGRAM_CLOUD_TOKEN="$TOKEN_FROM_USER"
+    log "token loaded from User env scope"
   fi
 fi
 
 # No token => no sync, but commit must still succeed.
 if [ -z "$ENGRAM_CLOUD_TOKEN" ]; then
+  log "no token, skipping sync"
   exit 0
 fi
 
 # Enroll lazily (idempotent at the server).
-"$ENGRAM_BIN" cloud enroll "$PROJECT_NAME" >/dev/null 2>&1
+ENROLL_OUT=$("$ENGRAM_BIN" cloud enroll "$PROJECT_NAME" 2>&1)
+log "enroll: $ENROLL_OUT"
 
 # Push everything new since the last sync. The cloud is delta-aware.
-"$ENGRAM_BIN" sync --cloud --project "$PROJECT_NAME" >/dev/null 2>&1
+SYNC_OUT=$("$ENGRAM_BIN" sync --cloud --project "$PROJECT_NAME" 2>&1)
+log "sync: $SYNC_OUT"
 
 exit 0
