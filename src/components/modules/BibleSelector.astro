@@ -1,0 +1,271 @@
+---
+/**
+ * BibleSelector — cascading version → book → chapter selector for the home.
+ *
+ * Hydrates from /datos/biblioteca.json at runtime. Persists the last
+ * selection via $selector (nanostores/persistent, key `rv:last-selection`).
+ * On submit, navigates to /biblia/{v}/{l}/{c}/.
+ *
+ * The trailing <a> below the form is the no-JS fallback — when JS is off,
+ * the form's submit button does nothing useful (the chapter reader reads
+ * Astro.params, not query string), so the user clicks the link.
+ */
+---
+
+<form
+  id="bible-selector"
+  class="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]"
+  aria-label="Selector bíblico"
+>
+  <label class="grid gap-1 text-sm font-semibold text-slate-800 dark:text-slate-200">
+    <span>Versión</span>
+    <select
+      id="bible-selector-version"
+      name="version"
+      class="rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm outline-none ring-brand-cian transition focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+      required
+    >
+      <option value="spapddpt" selected>Palabra de Dios para ti</option>
+    </select>
+  </label>
+  <label class="grid gap-1 text-sm font-semibold text-slate-800 dark:text-slate-200">
+    <span>Libro</span>
+    <select
+      id="bible-selector-libro"
+      name="libro"
+      class="rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm outline-none ring-brand-cian transition focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+      required
+    >
+      <option value="genesis" selected>Génesis</option>
+    </select>
+  </label>
+  <label class="grid gap-1 text-sm font-semibold text-slate-800 dark:text-slate-200">
+    <span>Capítulo</span>
+    <select
+      id="bible-selector-capitulo"
+      name="capitulo"
+      class="rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm outline-none ring-brand-cian transition focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+      required
+    >
+      <option value="1" selected>1</option>
+    </select>
+  </label>
+  <button
+    id="bible-selector-submit"
+    type="submit"
+    class="inline-flex items-center justify-center rounded-2xl bg-brand-cianDark px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-brand-cianDark/90 focus:outline-none focus:ring-2 focus:ring-brand-cian focus:ring-offset-2 dark:focus:ring-offset-slate-900"
+    aria-label="Ir al capítulo seleccionado"
+  >
+    Ir al capítulo
+  </button>
+</form>
+<a
+  class="mt-2 inline-block text-sm font-semibold text-brand-cianDark underline decoration-brand-cianClaro underline-offset-4 dark:text-brand-cianClaro"
+  href="/biblia/spapddpt/genesis/1/"
+>
+  Ir al capítulo (sin JavaScript)
+</a>
+
+<script>
+  import { $selector } from '@/stores/selector';
+
+  type SelectorVersion = {
+    slug: string;
+    nombre: string;
+    abreviatura: string;
+    libros: SelectorBook[];
+  };
+
+  type SelectorBook = {
+    slug: string;
+    nombre: string;
+    abreviatura: string;
+    capitulos: number[];
+  };
+
+  type SelectorManifestResponse = {
+    versions: SelectorVersion[];
+    updatedAt: string;
+  };
+
+  const MANIFEST_URL = '/datos/biblioteca.json';
+  const DEFAULT_SELECTION = { version: 'spapddpt', libro: 'genesis', capitulo: 1 };
+
+  const form = document.getElementById('bible-selector') as HTMLFormElement | null;
+  const versionSelect = document.getElementById('bible-selector-version') as HTMLSelectElement | null;
+  const libroSelect = document.getElementById('bible-selector-libro') as HTMLSelectElement | null;
+  const capituloSelect = document.getElementById('bible-selector-capitulo') as HTMLSelectElement | null;
+  const submitButton = document.getElementById('bible-selector-submit') as HTMLButtonElement | null;
+
+  if (!form || !versionSelect || !libroSelect || !capituloSelect || !submitButton) {
+    // Selector HTML is missing — nothing to wire. Bail silently.
+  } else {
+    let manifest: SelectorManifestResponse | null = null;
+
+    function readStoredSelection(): { version: string; libro: string; capitulo: number } {
+      try {
+        const stored = $selector.get();
+        if (stored && typeof stored === 'object') {
+          const v = typeof stored.version === 'string' ? stored.version : DEFAULT_SELECTION.version;
+          const l = typeof stored.libro === 'string' ? stored.libro : DEFAULT_SELECTION.libro;
+          const c = Number.isFinite(stored.capitulo) && stored.capitulo > 0 ? stored.capitulo : DEFAULT_SELECTION.capitulo;
+          return { version: v, libro: l, capitulo: c };
+        }
+      } catch {
+        // localStorage unavailable (Safari private mode, etc.) — silent fallback.
+      }
+      return { ...DEFAULT_SELECTION };
+    }
+
+    function persistSelection(): void {
+      try {
+        $selector.set({
+          version: versionSelect!.value as 'spapddpt' | 'sparvg' | 'spaRV1909' | 'mensaje',
+          libro: libroSelect!.value,
+          capitulo: Number(capituloSelect!.value),
+        });
+      } catch {
+        // Silent fallback — selection still works for this page load.
+      }
+    }
+
+    function findVersion(slug: string): SelectorVersion | undefined {
+      return manifest?.versions.find((v) => v.slug === slug);
+    }
+
+    function findBook(version: SelectorVersion, slug: string): SelectorBook | undefined {
+      return version.libros.find((b) => b.slug === slug);
+    }
+
+    function fillSelect(select: HTMLSelectElement, options: Array<{ value: string; label: string }>, selectedValue: string | null): void {
+      select.innerHTML = '';
+      for (const option of options) {
+        const element = document.createElement('option');
+        element.value = option.value;
+        element.textContent = option.label;
+        if (selectedValue !== null && option.value === selectedValue) {
+          element.selected = true;
+        }
+        select.appendChild(element);
+      }
+      // Fallback: if nothing matched, select the first option.
+      if (select.selectedIndex < 0 && select.options.length > 0) {
+        select.selectedIndex = 0;
+      }
+    }
+
+    function repopulateLibros(selectedVersion: string, selectedLibro: string | null): void {
+      const version = findVersion(selectedVersion);
+      if (!version) {
+        fillSelect(libroSelect!, [{ value: '', label: '—' }], null);
+        fillSelect(capituloSelect!, [{ value: '', label: '—' }], null);
+        return;
+      }
+      fillSelect(
+        libroSelect!,
+        version.libros.map((b) => ({ value: b.slug, label: b.nombre })),
+        selectedLibro,
+      );
+      repopulateCapitulos(selectedVersion, libroSelect!.value, null);
+    }
+
+    function repopulateCapitulos(selectedVersion: string, selectedLibro: string, selectedCapitulo: number | null): void {
+      const version = findVersion(selectedVersion);
+      const book = version ? findBook(version, selectedLibro) : undefined;
+      if (!book) {
+        fillSelect(capituloSelect!, [{ value: '', label: '—' }], null);
+        return;
+      }
+      const capString = selectedCapitulo !== null ? String(selectedCapitulo) : null;
+      fillSelect(
+        capituloSelect!,
+        book.capitulos.map((n) => ({ value: String(n), label: String(n) })),
+        capString,
+      );
+    }
+
+    async function loadManifest(): Promise<void> {
+      try {
+        const response = await fetch(MANIFEST_URL);
+        if (!response.ok) throw new Error(`Manifest request failed with ${response.status}.`);
+        manifest = (await response.json()) as SelectorManifestResponse;
+      } catch (error) {
+        console.error('BibleSelector: failed to load manifest', error);
+        manifest = null;
+      }
+    }
+
+    function hydrate(): void {
+      const stored = readStoredSelection();
+      if (!manifest) {
+        // Manifest failed to load — keep the SSR-rendered defaults (spapddpt/genesis/1).
+        return;
+      }
+      // Version
+      const versionExists = manifest.versions.some((v) => v.slug === stored.version);
+      const versionSlug = versionExists ? stored.version : (manifest.versions[0]?.slug ?? DEFAULT_SELECTION.version);
+      fillSelect(
+        versionSelect!,
+        manifest.versions.map((v) => ({ value: v.slug, label: v.nombre })),
+        versionSlug,
+      );
+      // Libro
+      const versionEntry = findVersion(versionSlug);
+      if (versionEntry) {
+        const libroExists = versionEntry.libros.some((b) => b.slug === stored.libro);
+        const libroSlug = libroExists ? stored.libro : (versionEntry.libros[0]?.slug ?? '');
+        fillSelect(
+          libroSelect!,
+          versionEntry.libros.map((b) => ({ value: b.slug, label: b.nombre })),
+          libroSlug,
+        );
+        // Capitulo
+        const book = findBook(versionEntry, libroSlug);
+        if (book) {
+          const cap = book.capitulos.includes(stored.capitulo)
+            ? stored.capitulo
+            : (book.capitulos[0] ?? 1);
+          fillSelect(
+            capituloSelect!,
+            book.capitulos.map((n) => ({ value: String(n), label: String(n) })),
+            String(cap),
+          );
+        }
+      }
+    }
+
+    versionSelect.addEventListener('change', () => {
+      repopulateLibros(versionSelect.value, null);
+      persistSelection();
+    });
+
+    libroSelect.addEventListener('change', () => {
+      repopulateCapitulos(versionSelect.value, libroSelect.value, null);
+      persistSelection();
+    });
+
+    capituloSelect.addEventListener('change', () => {
+      persistSelection();
+    });
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const v = versionSelect.value;
+      const l = libroSelect.value;
+      const c = capituloSelect.value;
+      if (!v || !l || !c) return;
+      window.location.assign(`/biblia/${v}/${l}/${c}/`);
+    });
+
+    async function init() {
+      await loadManifest();
+      hydrate();
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init, { once: true });
+    } else {
+      init();
+    }
+  }
+</script>

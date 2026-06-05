@@ -1,4 +1,4 @@
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import { db } from './client';
 import { recursos, recursoLibros, libros, versiculos, versiculosTokens, diccionarioEntradas } from './schema';
 
@@ -75,6 +75,38 @@ export type BibleLibraryVersion = {
   slug: string;
   nombre: string;
   books: BibleLibraryBook[];
+};
+
+export type SelectorBookEntry = {
+  slug: string;
+  nombre: string;
+  abreviatura: string;
+  capitulos: number[];
+};
+
+export type SelectorVersionEntry = {
+  slug: string;
+  nombre: string;
+  abreviatura: string;
+  libros: SelectorBookEntry[];
+};
+
+export type SelectorManifest = {
+  versions: SelectorVersionEntry[];
+  updatedAt: string;
+};
+
+/**
+ * Hardcoded version abreviatura map. The `recursos` table has no
+ * abreviatura column and the spec forbids schema changes, so the four
+ * known Bible slugs are mapped at the projection boundary. Extend the
+ * record when a new Bible is added.
+ */
+export const VERSION_ABBREVIATURES: Record<string, string> = {
+  spapddpt: 'PDPT',
+  sparvg: 'RVG',
+  spaRV1909: 'RVR1909',
+  mensaje: 'MSG',
 };
 
 type ChapterReference = {
@@ -193,6 +225,60 @@ export async function getChapterNavigation(reference: ChapterReference): Promise
     previous: links[currentIndex - 1] ?? null,
     next: links[currentIndex + 1] ?? null,
   };
+}
+
+export async function listSelectorManifest(): Promise<Omit<SelectorManifest, 'updatedAt'>> {
+  const rows = await db
+    .select({
+      version: recursos.slug,
+      versionNombre: recursos.nombre,
+      libro: libros.slug,
+      libroNombre: libros.nombre,
+      libroAbreviatura: libros.abreviatura,
+      libroOrden: recursoLibros.orden,
+      maxCapitulo: sql<number>`MAX(${versiculos.capitulo})`.as('max_capitulo'),
+    })
+    .from(versiculos)
+    .innerJoin(recursos, eq(versiculos.recursoId, recursos.id))
+    .innerJoin(libros, eq(versiculos.libroId, libros.id))
+    .innerJoin(
+      recursoLibros,
+      and(eq(recursoLibros.recursoId, recursos.id), eq(recursoLibros.libroId, libros.id)),
+    )
+    .where(eq(recursos.tipo, 'biblia'))
+    .groupBy(
+      recursos.slug,
+      recursos.nombre,
+      recursoLibros.orden,
+      libros.slug,
+      libros.nombre,
+      libros.abreviatura,
+    )
+    .orderBy(asc(recursos.slug), asc(recursoLibros.orden));
+
+  const versions: SelectorVersionEntry[] = [];
+
+  for (const row of rows) {
+    let version = versions.find((entry) => entry.slug === row.version);
+    if (!version) {
+      version = {
+        slug: row.version,
+        nombre: row.versionNombre,
+        abreviatura: VERSION_ABBREVIATURES[row.version] ?? row.version.toUpperCase(),
+        libros: [],
+      };
+      versions.push(version);
+    }
+
+    version.libros.push({
+      slug: row.libro,
+      nombre: row.libroNombre,
+      abreviatura: row.libroAbreviatura,
+      capitulos: Array.from({ length: row.maxCapitulo }, (_, i) => i + 1),
+    });
+  }
+
+  return { versions };
 }
 
 export async function listBibleLibrary(): Promise<BibleLibraryVersion[]> {
