@@ -1,6 +1,6 @@
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { db } from './client';
-import { recursos, recursoLibros, libros, versiculos, versiculosTokens, diccionarioEntradas } from './schema';
+import { recursos, recursoLibros, libros, versiculos, versiculosTokens, diccionarioEntradas, tskReferencias } from './schema';
 
 export type StaticChapterPath = {
   version: string;
@@ -441,4 +441,88 @@ export async function listSearchDocuments(): Promise<SearchDocument[]> {
     text: row.text,
     href: `/biblia/${row.version}/${row.bookSlug}/${row.chapter}/#v${row.verse}`,
   }));
+}
+
+// ---------------------------------------------------------------------------
+// TSK Cross-References
+// ---------------------------------------------------------------------------
+
+export type TskRefTarget = {
+  libro: string;
+  libro_slug: string;
+  capitulo: number;
+  versiculo_start: number;
+  versiculo_end: number;
+};
+
+export type TskReference = {
+  versiculo: number;
+  referencias: TskRefTarget[];
+};
+
+/**
+ * listTskForChapter — returns cross-references for a given chapter,
+ * grouped by source verse, ordered by target canon order + chapter + verse.
+ *
+ * Joins tsk_referencias with libros (twice: source + target) to resolve
+ * book slugs and names. Runs at build time during getStaticPaths().
+ *
+ * @param libroSlug - Source book slug (e.g., "genesis")
+ * @param capitulo  - Source chapter number
+ * @returns References grouped by verse number
+ */
+export async function listTskForChapter(
+  libroSlug: string,
+  capitulo: number,
+): Promise<TskReference[]> {
+  // Resolve source libro ID from slug
+  const srcLibro = await db
+    .select({ id: libros.id })
+    .from(libros)
+    .where(eq(libros.slug, libroSlug))
+    .get();
+
+  if (!srcLibro) return [];
+
+  const rows = await db
+    .select({
+      versiculo: tskReferencias.versiculo,
+      refLibroNombre: libros.nombre,
+      refLibroSlug: libros.slug,
+      refCapitulo: tskReferencias.refCapitulo,
+      refVersiculoStart: tskReferencias.refVersiculoStart,
+      refVersiculoEnd: tskReferencias.refVersiculoEnd,
+    })
+    .from(tskReferencias)
+    .innerJoin(libros, eq(tskReferencias.refLibroId, libros.id))
+    .where(
+      and(
+        eq(tskReferencias.libroId, srcLibro.id),
+        eq(tskReferencias.capitulo, capitulo),
+      ),
+    )
+    .orderBy(
+      asc(tskReferencias.versiculo),
+      asc(tskReferencias.refCapitulo),
+      asc(tskReferencias.refVersiculoStart),
+    );
+
+  // Group by verse number
+  const grouped = new Map<number, TskRefTarget[]>();
+  for (const row of rows) {
+    let targets = grouped.get(row.versiculo);
+    if (!targets) {
+      targets = [];
+      grouped.set(row.versiculo, targets);
+    }
+    targets.push({
+      libro: row.refLibroNombre,
+      libro_slug: row.refLibroSlug,
+      capitulo: row.refCapitulo,
+      versiculo_start: row.refVersiculoStart,
+      versiculo_end: row.refVersiculoEnd,
+    });
+  }
+
+  return Array.from(grouped, ([versiculo, referencias]) => ({ versiculo, referencias }));
 }

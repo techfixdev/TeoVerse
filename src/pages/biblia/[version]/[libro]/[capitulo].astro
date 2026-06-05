@@ -2,8 +2,8 @@
 import WorkspaceLayout from '@/layouts/WorkspaceLayout.astro';
 import StrongClickProxy from '@/components/workspace/StrongClickProxy.astro';
 import StrongPanel from '@/components/modules/StrongPanel.astro';
-import { getChapter, getChapterNavigation, listStaticChapterPaths, listTokensForChapter } from '@/db/queries';
-import type { ChapterToken } from '@/db/queries';
+import { getChapter, getChapterNavigation, listStaticChapterPaths, listTokensForChapter, listTskForChapter } from '@/db/queries';
+import type { ChapterToken, TskRefTarget } from '@/db/queries';
 
 export async function getStaticPaths() {
   const paths = await listStaticChapterPaths();
@@ -37,6 +37,13 @@ for (const token of allTokens) {
     tokensByVerse.set(token.versiculo, verseTokens);
   }
   verseTokens.push(token);
+}
+
+// Build-time TSK cross-reference query
+const tskRows = await listTskForChapter(libro!, Number(capitulo));
+const tskByVerse = new Map<number, TskRefTarget[]>();
+for (const row of tskRows) {
+  tskByVerse.set(row.versiculo, row.referencias);
 }
 ---
 
@@ -130,6 +137,15 @@ for (const token of allTokens) {
               ) : (
                 /* Fallback: no tokens available — render raw verse text */
                 versiculo.texto
+              )}
+              {/* TSK cross-reference superscript marker */}
+              {tskByVerse.has(versiculo.numero) && (
+                <button
+                  class="tsk-marker"
+                  type="button"
+                  data-tsk-refs={JSON.stringify(tskByVerse.get(versiculo.numero))}
+                  aria-label={`${tskByVerse.get(versiculo.numero)!.length} referencias cruzadas para ${chapter.libro.nombre} ${chapter.capitulo}:${versiculo.numero}`}
+                >{tskByVerse.get(versiculo.numero)!.length}</button>
               )}
             </span>
           </li>
