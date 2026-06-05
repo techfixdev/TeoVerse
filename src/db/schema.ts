@@ -103,6 +103,28 @@ export const tskReferencias = sqliteTable(
   (table) => [index('tsk_ref_source_idx').on(table.libroId, table.capitulo, table.versiculo)],
 );
 
+export const planLectura = sqliteTable(
+  'plan_lectura',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    mes: integer('mes').notNull(),
+    dia: integer('dia').notNull(),
+    orden: integer('orden').notNull().default(1),
+    libroId: integer('libro_id')
+      .notNull()
+      .references(() => libros.id, { onDelete: 'cascade' }),
+    capituloInicio: integer('capitulo_inicio').notNull(),
+    capituloFin: integer('capitulo_fin'),
+  },
+  (table) => [
+    uniqueIndex('plan_lectura_dia_idx').on(table.mes, table.dia, table.orden),
+  ],
+);
+
+export const planLecturaRelations = relations(planLectura, ({ one }) => ({
+  libro: one(libros, { fields: [planLectura.libroId], references: [libros.id] }),
+}));
+
 export const diccionarioEntradas = sqliteTable(
   'diccionario_entradas',
   {
@@ -171,3 +193,5 @@ export type VersiculoToken = typeof versiculosTokens.$inferSelect;
 export type NuevoVersiculoToken = typeof versiculosTokens.$inferInsert;
 export type TskReferencia = typeof tskReferencias.$inferSelect;
 export type NuevaTskReferencia = typeof tskReferencias.$inferInsert;
+export type PlanLecturaEntry = typeof planLectura.$inferSelect;
+export type NuevoPlanLecturaEntry = typeof planLectura.$inferInsert;

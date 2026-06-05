@@ -1,13 +1,14 @@
 ---
 import MainLayout from '@/layouts/MainLayout.astro';
 import BibleSelector from '@/components/modules/BibleSelector.astro';
-import { getHomeChapter } from '@/db/queries';
+import { getDailyReadings } from '@/db/queries';
 
-const chapter = await getHomeChapter();
+const hoy = new Date();
+const nombreMes = hoy.toLocaleDateString('es-ES', { month: 'long' });
+const diaNum = hoy.getDate();
+const readings = await getDailyReadings();
 
-if (!chapter) {
-  throw new Error('No home chapter found for Ríos de Vida.');
-}
+const tituloDia = `${diaNum} de ${nombreMes}`;
 ---
 
 <MainLayout title="Ríos de Vida | Estudio bíblico modular">
@@ -47,24 +48,41 @@ if (!chapter) {
           </button>
         </form>
 
-        <section class="mt-10 rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950/60" aria-label="Vista previa de lectura">
-          <div class="flex flex-col gap-1 border-b border-slate-200 pb-4 dark:border-slate-800 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p class="text-xs font-semibold uppercase tracking-[0.2em] text-brand-cianDark dark:text-brand-cianClaro">Lectura inicial</p>
-              <h2 class="mt-1 text-2xl font-bold">{chapter.libro.nombre} {chapter.capitulo}</h2>
-            </div>
-            <p class="text-sm text-slate-500 dark:text-slate-400">{chapter.biblia.nombre}</p>
-          </div>
+        {
+          readings.length === 0 ? (
+            <p class="mt-10 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+              No hay lectura programada para hoy ({tituloDia}). Revisá el plan de lectura o elegí un libro manualmente.
+            </p>
+          ) : (
+            readings.map((reading, idx) => {
+              const rango = reading.capituloInicio === reading.capituloFin
+                ? `${reading.capituloInicio}`
+                : `${reading.capituloInicio}-${reading.capituloFin}`;
+              return (
+                <section class="mt-10 rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950/60" aria-label={`Lectura diaria: ${reading.libro.nombre} ${rango}`}>
+                  <div class="flex flex-col gap-1 border-b border-slate-200 pb-4 dark:border-slate-800 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                      <p class="text-xs font-semibold uppercase tracking-[0.2em] text-brand-cianDark dark:text-brand-cianClaro">
+                        {idx === 0 ? `Lectura diaria — ${tituloDia}` : 'También hoy'}
+                      </p>
+                      <h2 class="mt-1 text-2xl font-bold">{reading.libro.nombre} {rango}</h2>
+                    </div>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">{reading.biblia.nombre}</p>
+                  </div>
 
-          <ol class="mt-5 space-y-4 font-reading text-lg leading-8 text-slate-800 dark:text-slate-200">
-            {chapter.versiculos.slice(0, 5).map((versiculo) => (
-              <li class="grid grid-cols-[2rem_1fr] gap-3">
-                <span class="pt-1 text-sm font-bold text-brand-cianDark dark:text-brand-cianClaro">{versiculo.numero}</span>
-                <span>{versiculo.texto}</span>
-              </li>
-            ))}
-          </ol>
-        </section>
+                  <ol class="mt-5 space-y-4 font-reading text-lg leading-8 text-slate-800 dark:text-slate-200">
+                    {reading.versiculos.slice(0, 8).map((versiculo) => (
+                      <li class="grid grid-cols-[2rem_1fr] gap-3">
+                        <span class="pt-1 text-sm font-bold text-brand-cianDark dark:text-brand-cianClaro">{versiculo.numero}</span>
+                        <span>{versiculo.texto}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+              );
+            })
+          )
+        }
       </article>
     </section>
   </main>

@@ -1,6 +1,6 @@
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, between, eq, sql } from 'drizzle-orm';
 import { db } from './client';
-import { recursos, recursoLibros, libros, versiculos, versiculosTokens, diccionarioEntradas, tskReferencias } from './schema';
+import { recursos, recursoLibros, libros, versiculos, versiculosTokens, diccionarioEntradas, tskReferencias, planLectura } from './schema';
 
 export type StaticChapterPath = {
   version: string;
@@ -26,6 +26,22 @@ export type Chapter = {
     nombre: string;
   };
   capitulo: number;
+  versiculos: ChapterVerse[];
+};
+
+export type DailyReading = {
+  biblia: {
+    slug: string;
+    nombre: string;
+    licencia: string;
+    fuente: string;
+  };
+  libro: {
+    slug: string;
+    nombre: string;
+  };
+  capituloInicio: number;
+  capituloFin: number;
   versiculos: ChapterVerse[];
 };
 
@@ -186,6 +202,79 @@ export async function getChapter(reference: ChapterReference): Promise<Chapter |
 
 export async function getHomeChapter(): Promise<Chapter | null> {
   return getChapter({ version: 'spapddpt', libro: 'genesis', capitulo: 1 });
+}
+
+export async function getDailyReadings(): Promise<DailyReading[]> {
+  const now = new Date();
+  const mes = now.getMonth() + 1;
+  const dia = now.getDate();
+
+  const planEntries = await db
+    .select({
+      libroId: planLectura.libroId,
+      capituloInicio: planLectura.capituloInicio,
+      capituloFin: planLectura.capituloFin,
+      libroSlug: libros.slug,
+      libroNombre: libros.nombre,
+    })
+    .from(planLectura)
+    .innerJoin(libros, eq(planLectura.libroId, libros.id))
+    .where(and(eq(planLectura.mes, mes), eq(planLectura.dia, dia)))
+    .orderBy(asc(planLectura.orden));
+
+  if (planEntries.length === 0) return [];
+
+  const readings: DailyReading[] = [];
+
+  for (const entry of planEntries) {
+    const capFin = entry.capituloFin ?? entry.capituloInicio;
+
+    const rows = await db
+      .select({
+        bibliaSlug: recursos.slug,
+        bibliaNombre: recursos.nombre,
+        bibliaLicencia: recursos.licencia,
+        bibliaFuente: recursos.fuente,
+        libroSlug: libros.slug,
+        libroNombre: libros.nombre,
+        capitulo: versiculos.capitulo,
+        versiculo: versiculos.versiculo,
+        texto: versiculos.texto,
+      })
+      .from(versiculos)
+      .innerJoin(recursos, eq(versiculos.recursoId, recursos.id))
+      .innerJoin(libros, eq(versiculos.libroId, libros.id))
+      .where(
+        and(
+          eq(recursos.tipo, 'biblia'),
+          eq(recursos.slug, 'spapddpt'),
+          eq(libros.id, entry.libroId),
+          between(versiculos.capitulo, entry.capituloInicio, capFin),
+        ),
+      )
+      .orderBy(asc(versiculos.capitulo), asc(versiculos.versiculo));
+
+    const firstRow = rows[0];
+    if (!firstRow) continue;
+
+    readings.push({
+      biblia: {
+        slug: firstRow.bibliaSlug,
+        nombre: firstRow.bibliaNombre,
+        licencia: firstRow.bibliaLicencia,
+        fuente: firstRow.bibliaFuente,
+      },
+      libro: {
+        slug: firstRow.libroSlug,
+        nombre: firstRow.libroNombre,
+      },
+      capituloInicio: entry.capituloInicio,
+      capituloFin: capFin,
+      versiculos: rows.map((row) => ({ numero: row.versiculo, texto: row.texto })),
+    });
+  }
+
+  return readings;
 }
 
 export async function getChapterNavigation(reference: ChapterReference): Promise<ChapterNavigation | null> {
