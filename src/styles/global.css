@@ -35,9 +35,21 @@
     --brand-text: #E6F4F8;
   }
 
+  /* -------------------------------------------------------------------------
+   * Font-scale custom properties — sets the base font-size multiplier.
+   * :root default is 1.0 (no scaling). Scale classes override --font-scale.
+   * All rem-based units scale proportionally without per-element changes.
+   * ------------------------------------------------------------------------- */
+  :root { --font-scale: 1; }
+
+  .font-scale-sm { --font-scale: 1.15; }
+  .font-scale-md { --font-scale: 1.35; }
+  .font-scale-lg { --font-scale: 1.6;  }
+
   /* html background matches brand-base to prevent iOS overscroll grey flash */
   html {
     background-color: var(--brand-base);
+    font-size: calc(100% * var(--font-scale));
     @apply text-slate-950 antialiased dark:text-slate-100;
   }
 
@@ -328,4 +340,17 @@ html.ws-strong-open .strong-panel {
 .strong-panel__retry:focus-visible {
   outline: 2px solid var(--brand-cian-dark);
   outline-offset: 1px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Reduced motion — respect OS-level preference.
+ * Uses 0.01ms instead of 0s to keep animationend events firing.
+ * --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -1,0 +1,102 @@
+---
+/**
+ * FontSizeControl — user-facing font scale toggle.
+ *
+ * Renders +/reset/– buttons with ARIA `role="group"` and touch targets ≥44px
+ * (WCAG 2.5.5). Reads and writes `$fontScale` persistentJSON store; the
+ * inline bootstrap script applies the CSS class on `<html>` pre-paint.
+ *
+ * Placed in the layout header bar alongside BrandLogo.
+ */
+---
+
+<div
+  role="group"
+  aria-label="Control de tamaño de texto"
+  class="inline-flex items-center gap-1 rounded-lg border border-brand-grisSuave/30 bg-white/60 p-1 dark:bg-[#0E1A1F]/60"
+>
+  <button
+    type="button"
+    data-font-action="decrease"
+    class="inline-flex h-11 w-11 items-center justify-center rounded-md text-brand-gris transition hover:bg-brand-cianClaro/20 hover:text-brand-cianDark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-cianDark focus-visible:ring-offset-1"
+    aria-label="Reducir tamaño de texto"
+    aria-disabled="false"
+  >
+    <svg aria-hidden="true" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14" />
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14" class="opacity-40" />
+    </svg>
+  </button>
+
+  <button
+    type="button"
+    data-font-action="reset"
+    class="flex h-11 items-center rounded-md px-3 text-xs font-semibold uppercase tracking-wider text-brand-gris transition hover:bg-brand-cianClaro/20 hover:text-brand-cianDark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-cianDark focus-visible:ring-offset-1"
+    aria-label="Restablecer tamaño de texto"
+  >
+    Aa
+  </button>
+
+  <button
+    type="button"
+    data-font-action="increase"
+    class="inline-flex h-11 w-11 items-center justify-center rounded-md text-brand-gris transition hover:bg-brand-cianClaro/20 hover:text-brand-cianDark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-cianDark focus-visible:ring-offset-1"
+    aria-label="Aumentar tamaño de texto"
+    aria-disabled="false"
+  >
+    <svg aria-hidden="true" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
+    </svg>
+  </button>
+</div>
+
+<script>
+  import { $fontScale, LEVELS } from '@/stores/fontScale';
+
+  function applyScaleClass(level: string): void {
+    const html = document.documentElement;
+    // Remove all existing font-scale-* classes
+    html.classList.remove('font-scale-sm', 'font-scale-md', 'font-scale-lg');
+    // Apply new class if not default
+    if (level !== 'default') {
+      html.classList.add('font-scale-' + level);
+    }
+  }
+
+  function setup(): void {
+    // Sync class on initial load (bootstrap may already have set it)
+    applyScaleClass($fontScale.get());
+
+    // Listen for store changes and sync class
+    $fontScale.subscribe((level) => {
+      applyScaleClass(level);
+    });
+
+    // Button click handlers
+    const increaseBtn = document.querySelector<HTMLButtonElement>('[data-font-action="increase"]');
+    const decreaseBtn = document.querySelector<HTMLButtonElement>('[data-font-action="decrease"]');
+    const resetBtn = document.querySelector<HTMLButtonElement>('[data-font-action="reset"]');
+
+    increaseBtn?.addEventListener('click', () => {
+      const current = $fontScale.get();
+      const idx = LEVELS.indexOf(current);
+      if (idx < LEVELS.length - 1) {
+        $fontScale.set(LEVELS[idx + 1]);
+      }
+    });
+
+    decreaseBtn?.addEventListener('click', () => {
+      const current = $fontScale.get();
+      const idx = LEVELS.indexOf(current);
+      if (idx > 0) {
+        $fontScale.set(LEVELS[idx - 1]);
+      }
+    });
+
+    resetBtn?.addEventListener('click', () => {
+      $fontScale.set('default');
+    });
+  }
+
+  setup();
+</script>

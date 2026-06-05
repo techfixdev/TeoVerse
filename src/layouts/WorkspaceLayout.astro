@@ -31,6 +31,8 @@ import '@fontsource/inter/700.css';
 import '@fontsource/caveat/400.css';
 import '@fontsource/caveat/500.css';
 import BrandLogo from '@/components/brand/BrandLogo.astro';
+import FontSizeControl from '@/components/brand/FontSizeControl.astro';
+import { fontBootstrapScript } from '@/components/brand/fontBootstrap';
 import ReferenciaSeed from '@/components/workspace/ReferenciaSeed.astro';
 import { bootstrapScript } from '@/components/workspace/bootstrap';
 
@@ -74,14 +76,23 @@ const {
         Reads localStorage and applies ws-{id}-open/closed classes on <html>
         so CSS can show/hide panels without layout shift. */}
     <script is:inline set:html={bootstrapScript} />
+
+    {/* Font-scale bootstrap — runs AFTER workspace bootstrap.
+        Reads localStorage and applies font-scale-{level} class on <html>
+        so CSS can scale text without FOUC. */}
+    <script is:inline set:html={fontBootstrapScript} />
   </head>
 
   <body class="font-brand min-h-screen antialiased bg-[color:var(--brand-base)] text-[color:var(--brand-text)]">
+    {/* Skip-to-content — first focusable element; hidden until Tab */}
+    <a href="#main-content" class="absolute -top-full left-4 z-50 rounded-lg bg-brand-cianDark px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all focus:top-4 focus:outline-none focus:ring-2 focus:ring-brand-cianClaro">Saltar al contenido</a>
+
 
     {/* Brand header */}
     <header class="workspace-chrome sticky top-0 z-40 border-b border-brand-grisSuave/30 bg-white/90 backdrop-blur-sm dark:bg-[#0E1A1F]/90 dark:border-white/10">
       <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-2 sm:px-6">
         <BrandLogo />
+        <FontSizeControl />
 
         <nav class="flex items-center gap-4 text-sm font-medium text-brand-gris" aria-label="Navegación principal">
           <a class="rounded-sm transition hover:text-brand-cianDark focus-visible:text-brand-cianDark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-cianDark focus-visible:ring-offset-2" href="/">Inicio</a>
@@ -94,7 +105,7 @@ const {
 
     {/* Workspace grid — mobile: single column; lg: reading + aside panel region */}
     <div class="workspace-grid mx-auto max-w-7xl px-4 py-6 sm:px-6 gap-6">
-      <main class="module-lectura min-w-0">
+      <main id="main-content" class="module-lectura min-w-0">
         <slot />
       </main>
 

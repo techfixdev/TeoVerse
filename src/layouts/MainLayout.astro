@@ -7,6 +7,8 @@ import '@fontsource/inter/500.css';
 import '@fontsource/inter/600.css';
 import '@fontsource/inter/700.css';
 import BrandLogo from '@/components/brand/BrandLogo.astro';
+import FontSizeControl from '@/components/brand/FontSizeControl.astro';
+import { fontBootstrapScript } from '@/components/brand/fontBootstrap';
 
 interface Props {
   title?: string;
@@ -31,11 +33,20 @@ const {
     <meta property="og:site_name" content="Ríos de Vida" />
     <meta property="og:type" content="website" />
     <title>{title}</title>
+
+    {/* Font-scale bootstrap — runs synchronously before first paint.
+        Reads localStorage and applies font-scale-{level} class on <html>
+        so CSS can scale text without FOUC. */}
+    <script is:inline set:html={fontBootstrapScript} />
   </head>
   <body class="h-full bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-100">
+    {/* Skip-to-content — first focusable element; hidden until Tab */}
+    <a href="#main-content" class="absolute -top-full left-4 z-50 rounded-lg bg-brand-cianDark px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all focus:top-4 focus:outline-none focus:ring-2 focus:ring-brand-cianClaro">Saltar al contenido</a>
+
     <header class="border-b border-slate-200 bg-white/80 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-950/80">
       <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
         <BrandLogo isotypeOnly class="shrink-0" />
+        <FontSizeControl />
         <a
           class="text-sm font-semibold text-brand-cianDark underline decoration-brand-cianClaro underline-offset-4 dark:text-brand-cianClaro"
           href="/atribuciones"
