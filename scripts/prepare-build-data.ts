@@ -8,6 +8,11 @@ if (hasTursoConnection) {
   process.exit(0);
 }
 
+// drop-fts must run before db:push: drizzle-kit detects versiculos_fts in
+// sqlite_master (from a prior build:fts run) and tries to drop its FTS shadow
+// tables individually, which fails. Dropping the virtual table first gives
+// drizzle-kit a clean schema to reconcile against.
+runPnpmScript('drop:fts');
 runPnpmScript('db:push');
 runPnpmScript('db:seed');
 // import:spapddpt populates versiculos + versiculos_tokens (Strong interlinear pipeline)
