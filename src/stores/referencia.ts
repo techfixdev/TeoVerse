@@ -36,3 +36,18 @@ export interface SenalStrong {
 }
 
 export const $senalStrong = atom<SenalStrong | null>(null);
+
+// ---------------------------------------------------------------------------
+// $senalTsk
+// TSK cross-reference marker click payload. null when no marker is selected.
+// Contains the verse number and the parsed reference list from data-tsk-refs.
+// ---------------------------------------------------------------------------
+
+import type { TskRefTarget } from '@/db/queries';
+
+export interface SenalTsk {
+  versiculo: number;
+  referencias: TskRefTarget[];
+}
+
+export const $senalTsk = atom<SenalTsk | null>(null);

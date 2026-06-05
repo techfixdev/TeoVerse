@@ -33,8 +33,10 @@ import '@fontsource/caveat/500.css';
 import BrandLogo from '@/components/brand/BrandLogo.astro';
 import FontSizeControl from '@/components/brand/FontSizeControl.astro';
 import { fontBootstrapScript } from '@/components/brand/fontBootstrap';
-import ReferenciaSeed from '@/components/workspace/ReferenciaSeed.astro';
-import { bootstrapScript } from '@/components/workspace/bootstrap';
+  import ReferenciaSeed from '@/components/workspace/ReferenciaSeed.astro';
+  import TskClickProxy from '@/components/workspace/TskClickProxy.astro';
+  import TskPanel from '@/components/modules/TskPanel.astro';
+  import { bootstrapScript } from '@/components/workspace/bootstrap';
 
 interface Props {
   title?:       string;
@@ -110,7 +112,11 @@ const {
       </main>
 
       <aside class="workspace-panels" aria-label="Paneles de estudio">
+        <!-- Strong panel islands -->
         <slot name="panels" />
+        <!-- TSK panel islands — mounted directly in layout, not via page slot -->
+        <TskClickProxy />
+        <TskPanel />
       </aside>
     </div>
 

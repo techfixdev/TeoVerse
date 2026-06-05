@@ -33,7 +33,7 @@ export interface Atribucion {
 // Design-authoritative list (tasks artifact 1.2).
 // ---------------------------------------------------------------------------
 
-export type ModuloTipo = 'lectura' | 'strong' | 'diccionario' | 'comparar' | 'notas';
+export type ModuloTipo = 'lectura' | 'strong' | 'diccionario' | 'comparar' | 'notas' | 'tsk';
 
 // ---------------------------------------------------------------------------
 // Module contract

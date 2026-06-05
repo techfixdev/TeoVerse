@@ -18,6 +18,7 @@
 
 <script>
   import { $senalStrong } from '@/stores/referencia';
+  import { $senalTsk } from '@/stores/referencia';
 
   function attach() {
     const container = document.querySelector<HTMLElement>('main.module-lectura');
@@ -32,6 +33,8 @@
 
       if (codigoStrong) {
         $senalStrong.set({ codigoStrong, palabra });
+        // Mutual exclusion: close TSK panel
+        $senalTsk.set(null);
       }
     }
 
