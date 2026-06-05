@@ -1,72 +1,50 @@
 import type { APIRoute } from 'astro';
-import { db } from '@/db/client';
-import { versiculos, recursos, libros, recursoLibros } from '@/db/schema';
-import { and, asc, eq, like, or, inArray } from 'drizzle-orm';
+import { listBibliaVersions, searchVersiculos } from '@/db/queries';
 
 export const prerender = false;
-
-const VERSIONES_DISPONIBLES = ['spapddpt', 'sparvg', 'spaRV1909', 'mensaje'];
 
 export const GET: APIRoute = async ({ request }) => {
   const url = new URL(request.url);
   const q = (url.searchParams.get('q') ?? '').trim();
   const versionesParam = url.searchParams.get('versiones') ?? '';
 
-  if (!q || q.length < 2) {
+  // Spec FTS-5: queries shorter than 3 chars return empty immediately (no DB call)
+  if (q.length < 3) {
     return Response.json({ results: [], count: 0, query: q });
   }
 
-  const versionesSeleccionadas = versionesParam
-    ? versionesParam.split(',').filter((v) => VERSIONES_DISPONIBLES.includes(v))
-    : VERSIONES_DISPONIBLES;
+  // Fetch valid Bible slugs from DB (replaces hardcoded VERSIONES_DISPONIBLES)
+  const availableVersions = await listBibliaVersions();
+  const availableSlugs = new Set(availableVersions.map((v) => v.slug));
 
-  if (versionesSeleccionadas.length === 0) {
+  // Validate requested versions against live DB slugs
+  const requestedSlugs = versionesParam ? versionesParam.split(',').map((s) => s.trim()).filter(Boolean) : [];
+  const validatedSlugs = requestedSlugs.length > 0
+    ? requestedSlugs.filter((slug) => availableSlugs.has(slug))
+    : [...availableSlugs];
+
+  if (validatedSlugs.length === 0) {
     return Response.json({ results: [], count: 0, query: q });
   }
 
-  const normalizedQuery = `%${q}%`;
+  // FTS5 search — searchVersiculos handles sanitization, short-query guard, error fallback
+  const searchResponse = await searchVersiculos(q, validatedSlugs);
 
-  const conditions: ReturnType<typeof and>[] = [
-    eq(recursos.tipo, 'biblia'),
-    inArray(recursos.slug, versionesSeleccionadas),
-    or(
-      like(versiculos.texto, normalizedQuery),
-      like(libros.nombre, normalizedQuery),
-    )!,
-  ];
-
-  const rows = await db
-    .select({
-      version: recursos.slug,
-      versionNombre: recursos.nombre,
-      book: libros.nombre,
-      bookSlug: libros.slug,
-      chapter: versiculos.capitulo,
-      verse: versiculos.versiculo,
-      text: versiculos.texto,
-    })
-    .from(versiculos)
-    .innerJoin(recursos, eq(versiculos.recursoId, recursos.id))
-    .innerJoin(libros, eq(versiculos.libroId, libros.id))
-    .innerJoin(recursoLibros, and(eq(recursoLibros.recursoId, recursos.id), eq(recursoLibros.libroId, libros.id)))
-    .where(and(...conditions))
-    .orderBy(asc(recursos.slug), asc(recursoLibros.orden), asc(versiculos.capitulo), asc(versiculos.versiculo))
-    .limit(60);
-
-  const results = rows.map((row) => ({
-    version: row.version,
-    versionNombre: row.versionNombre,
-    book: row.book,
-    chapter: row.chapter,
-    verse: row.verse,
-    text: row.text,
-    href: `/biblia/${row.version}/${row.bookSlug}/${row.chapter}/#v${row.verse}`,
-  }));
+  // Spec FTS-6: on FTS error, return HTTP 200 with error indicator (never 500)
+  if (searchResponse.error) {
+    return Response.json({
+      results: [],
+      count: 0,
+      query: q,
+      versiones: validatedSlugs,
+      error: searchResponse.error,
+    });
+  }
 
   return Response.json({
     query: q,
-    count: results.length,
-    versiones: versionesSeleccionadas,
-    results,
+    count: searchResponse.results.length,
+    versiones: validatedSlugs,
+    results: searchResponse.results,
   });
 };
