@@ -26,7 +26,7 @@
 
 ## Phase 0 — Validation Gate (MUST run first; blocks all apply work)
 
-- [ ] **T-0.1** Run `scripts/_fts5-probe.ts` via `npx tsx scripts/_fts5-probe.ts` and confirm output contains `RESULT: FTS5_EXTERNAL_CONTENT_SUPPORTED`. If it outputs `FTS5_EXTERNAL_CONTENT_FAILED`, apply the standalone-table fallback schema defined in the design before proceeding. Record the probe result — it governs which DDL variant is used in T-1.1.
+- [x] **T-0.1** Run `scripts/_fts5-probe.ts` via `npx tsx scripts/_fts5-probe.ts` and confirm output contains `RESULT: FTS5_EXTERNAL_CONTENT_SUPPORTED`. If it outputs `FTS5_EXTERNAL_CONTENT_FAILED`, apply the standalone-table fallback schema defined in the design before proceeding. Record the probe result — it governs which DDL variant is used in T-1.1.
   - **Spec**: FTS-6 (fallback on FTS index failure)
   - **Parallel**: No — result gates all subsequent FTS tasks
 
@@ -34,11 +34,11 @@
 
 ## Phase 1 — FTS5 Infrastructure (PR-1, sequential)
 
-- [ ] **T-1.1** Create `drizzle/0003_versiculos_fts.sql` as a reference-only migration file (NOT applied by drizzle-kit push). It must contain the DDL for `versiculos_fts` matching the probe result: external-content variant if probe passed, standalone variant otherwise. Include a header comment: "Reference only — applied by scripts/build-fts.ts".
+- [x] **T-1.1** Create `drizzle/0005_versiculos_fts.sql` as a reference-only migration file (NOT applied by drizzle-kit push). It must contain the DDL for `versiculos_fts` matching the probe result: external-content variant if probe passed, standalone variant otherwise. Include a header comment: "Reference only — applied by scripts/build-fts.ts".
   - **Spec**: FTS-1, FTS-2 (tokenize unicode61 remove_diacritics 2), FTS-3 (bm25)
   - **Parallel**: Can run after T-0.1
 
-- [ ] **T-1.2** Create `scripts/build-fts.ts`. Requirements:
+- [x] **T-1.2** Create `scripts/build-fts.ts`. Requirements:
   - Import `src/db/client.ts` (auto-targets Turso via `TURSO_CONNECTION_URL` env var or `file:local.db`).
   - Run DDL idempotently: `DROP TABLE IF EXISTS versiculos_fts` then CREATE.
   - Apply the FTS5 DDL from T-1.1 (external-content or standalone per probe result).
@@ -48,11 +48,11 @@
   - **Spec**: FTS-6 (graceful), design ADR-2 (DB-target-agnostic)
   - **Parallel**: Can run in parallel with T-1.1 once T-0.1 is done
 
-- [ ] **T-1.3** Add `"build:fts": "tsx scripts/build-fts.ts"` to `package.json` scripts.
+- [x] **T-1.3** Add `"build:fts": "tsx scripts/build-fts.ts"` to `package.json` scripts.
   - **Spec**: design pipeline section
   - **Parallel**: Can run in parallel with T-1.1 and T-1.2
 
-- [ ] **T-1.4** Append `runPnpmScript('build:fts')` as the LAST step in the local (non-Turso) branch of `scripts/prepare-build-data.ts` (after `db:seed-plan`). Do NOT add it inside the `if (hasTursoConnection)` block.
+- [x] **T-1.4** Append `runPnpmScript('build:fts')` as the LAST step in the local (non-Turso) branch of `scripts/prepare-build-data.ts` (after `db:seed-plan`). Do NOT add it inside the `if (hasTursoConnection)` block.
   - **Spec**: design pipeline, design CRITICAL Turso/prod parity
   - **Parallel**: No — must follow T-1.3
 
@@ -60,7 +60,7 @@
 
 ## Phase 2 — Query Layer (PR-1, can run in parallel with Phase 1 after T-0.1)
 
-- [ ] **T-2.1** Add `searchVersiculos(q: string, versions: string[]): Promise<SearchResult[]>` to `src/db/queries.ts`. Requirements:
+- [x] **T-2.1** Add `searchVersiculos(q: string, versions: string[]): Promise<SearchResult[]>` to `src/db/queries.ts`. Requirements:
   - Input: raw query string (not yet sanitized) + validated version slug array.
   - Sanitize internally: lowercase → split whitespace → strip embedded `"` → wrap each term in `"..."` → join with space (implicit AND). Quoting neutralizes all FTS5 operators.
   - Short-query guard: if `q.trim().length < 3` return `[]` immediately (no DB call).
@@ -71,7 +71,7 @@
   - **Spec**: FTS-1, FTS-2, FTS-3 (bm25 ordering), FTS-4 (version filter), FTS-5 (limit 60, short-query guard), FTS-6 (try/catch)
   - **Parallel**: Can run in parallel with T-1.1 through T-1.3
 
-- [ ] **T-2.2** Add `listBibliaVersions(): Promise<{ slug: string; nombre: string }[]>` to `src/db/queries.ts`. Query: `SELECT slug, nombre FROM recursos WHERE tipo = 'biblia' ORDER BY slug`. This replaces the hardcoded `VERSIONES_DISPONIBLES` array.
+- [x] **T-2.2** Add `listBibliaVersions(): Promise<{ slug: string; nombre: string }[]>` to `src/db/queries.ts`. Query: `SELECT slug, nombre FROM recursos WHERE tipo = 'biblia' ORDER BY slug`. This replaces the hardcoded `VERSIONES_DISPONIBLES` array.
   - **Spec**: PILLS-1 (DB-driven, no hardcoded array), FTS-4 (version validation)
   - **Parallel**: Can run in parallel with T-2.1
 
@@ -79,7 +79,7 @@
 
 ## Phase 3 — Search Endpoint Rewrite (PR-1, sequential after Phase 2)
 
-- [ ] **T-3.1** Rewrite `src/pages/buscar.json.ts`. Requirements:
+- [x] **T-3.1** Rewrite `src/pages/buscar.json.ts`. Requirements:
   - Remove `VERSIONES_DISPONIBLES` hardcoded constant (line 8).
   - Remove all Drizzle imports (`versiculos`, `recursos`, `libros`, `recursoLibros`, `and`, `asc`, `eq`, `like`, `or`, `inArray`).
   - On each request: (1) extract `q` and `versiones` params; (2) if `q.length < 3` return `{ results: [], count: 0, query: q }` (spec: min 3 chars, not 2 as current — align with spec FTS-5); (3) call `listBibliaVersions()` to get valid slugs and validate the requested versions against it; (4) call `searchVersiculos(q, validatedSlugs)`; (5) if response contains `error` field, return HTTP 200 with `{ results: [], error: 'search_unavailable', query: q }`.
@@ -90,7 +90,7 @@
   - **Spec**: FTS-1 through FTS-6, PILLS-1 (no hardcoded versions in endpoint)
   - **Parallel**: No — must follow T-2.1 and T-2.2
 
-- [ ] **T-3.2** Run `pnpm build:astro` (TypeScript check only, no data pipeline) to confirm `buscar.json.ts` compiles cleanly after the rewrite. Fix any TS errors before continuing.
+- [x] **T-3.2** Run `pnpm build:astro` (TypeScript check only, no data pipeline) to confirm `buscar.json.ts` compiles cleanly after the rewrite. Fix any TS errors before continuing.
   - **Spec**: cross-cutting constraint: `pnpm build` MUST succeed
   - **Parallel**: No — must follow T-3.1
 
@@ -98,7 +98,7 @@
 
 ## Phase 4 — Verification Script (PR-1, can run in parallel with Phase 3)
 
-- [ ] **T-4.1** Create `scripts/verify-search-fts.ts`. This script must:
+- [x] **T-4.1** Create `scripts/verify-search-fts.ts`. This script must:
   - Call `build-fts.ts` logic (or import a helper) to ensure the FTS table is populated in the local DB.
   - Execute a raw SQL MATCH query for `"corazon"` (no accent) against `versiculos_fts` and assert at least one row is returned (validates FTS-1 accent folding).
   - Execute a MATCH query for `"El"` (capital E) and assert at least one row (validates FTS-2 case folding).
@@ -109,7 +109,7 @@
   - **Spec**: FTS-1, FTS-2, FTS-4, FTS-5
   - **Parallel**: Can draft while T-3.1 is in progress; finalize after T-2.1 is done
 
-- [ ] **T-4.2** Add `"verify:search-fts": "tsx scripts/verify-search-fts.ts"` to `package.json` scripts and insert it into the `verify` chain in `package.json` (after `verify:bible-queries`).
+- [x] **T-4.2** Add `"verify:search-fts": "tsx scripts/verify-search-fts.ts"` to `package.json` scripts and insert it into the `verify` chain in `package.json` (after `verify:bible-queries`).
   - **Note**: The existing `verify:search-index` entry (if any) is dead (search-index.json approach eliminated). Remove it from the `verify` chain if present. If it doesn't exist, skip.
   - **Spec**: cross-cutting constraint: `pnpm verify` MUST pass
   - **Parallel**: No — must follow T-4.1
@@ -118,7 +118,7 @@
 
 ## Phase 5 — Turso Runbook (PR-1, must be documented before PR-1 merge)
 
-- [ ] **T-5.1** Add a `## FTS5 / Turso Deployment Runbook` section to `openspec/changes/search-version-selection/tasks.md` (this file, append at bottom) OR create `docs/turso-fts-runbook.md` (preferred if a `docs/` directory exists). Content must include:
+- [x] **T-5.1** Add a `## FTS5 / Turso Deployment Runbook` section to `openspec/changes/search-version-selection/tasks.md` (this file, append at bottom) OR create `docs/turso-fts-runbook.md` (preferred if a `docs/` directory exists). Content must include:
   - Step 1: Ensure `TURSO_CONNECTION_URL` and `TURSO_AUTH_TOKEN` are set in the shell.
   - Step 2: Run `pnpm build:fts` — this runs `build-fts.ts` which auto-targets Turso.
   - Step 3: Verify: run `tsx -e "import {client} from './src/db/client.ts'; client.execute('SELECT count(*) as n FROM versiculos_fts').then(r => console.log(r.rows))"` and confirm `n > 0`.
