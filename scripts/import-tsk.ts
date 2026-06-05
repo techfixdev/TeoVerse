@@ -4,36 +4,36 @@ import { pathToFileURL } from 'node:url';
 import { unzipSync, strFromU8 } from 'fflate';
 import { db } from '../src/db/client';
 import { tskReferencias, libros } from '../src/db/schema';
-import { eq } from 'drizzle-orm';
 
 const TSK_ZIP_URL = 'https://a.openbible.info/data/cross-references.zip';
 const sourceDir = path.resolve('sources', 'tsk');
 const zipPath = path.join(sourceDir, 'cross_references.zip');
 
 /**
- * Static OSIS abbreviation → libro.slug mapping.
+ * Static OpenBible.info abbreviation → libro.slug mapping.
+ * These are the exact abbreviations used in the cross_references.txt dataset.
  * Covers all 66 canonical Protestant books.
  */
-const OSIS_TO_SLUG: Record<string, string> = {
+const ABBR_TO_SLUG: Record<string, string> = {
   // Old Testament
-  Gen: 'genesis', Exo: 'exodo', Lev: 'levitico', Num: 'numeros', Deu: 'deuteronomio',
-  Jos: 'josue', Jdg: 'jueces', Rut: 'rut',
-  '1Sa': '1-samuel', '2Sa': '2-samuel', '1Ki': '1-reyes', '2Ki': '2-reyes',
-  '1Ch': '1-cronicas', '2Ch': '2-cronicas',
-  Ezr: 'esdras', Neh: 'nehemias', Est: 'ester', Job: 'job',
-  Psa: 'salmos', Pro: 'proverbios', Ecc: 'eclesiastes', Sng: 'cantar-de-los-cantares',
-  Isa: 'isaias', Jer: 'jeremias', Lam: 'lamentaciones', Eze: 'ezequiel', Dan: 'daniel',
-  Hos: 'oseas', Jol: 'joel', Amo: 'amos', Oba: 'abdias', Jon: 'jonas',
-  Mic: 'miqueas', Nah: 'nahum', Hab: 'habacuc', Zep: 'sofonias',
-  Hag: 'hageo', Zec: 'zacarias', Mal: 'malaquias',
+  Gen: 'genesis', Exod: 'exodo', Lev: 'levitico', Num: 'numeros', Deut: 'deuteronomio',
+  Josh: 'josue', Judg: 'jueces', Ruth: 'rut',
+  '1Sam': '1-samuel', '2Sam': '2-samuel', '1Kgs': '1-reyes', '2Kgs': '2-reyes',
+  '1Chr': '1-cronicas', '2Chr': '2-cronicas',
+  Ezra: 'esdras', Neh: 'nehemias', Esth: 'ester', Job: 'job',
+  Ps: 'salmos', Prov: 'proverbios', Eccl: 'eclesiastes', Song: 'cantar-de-los-cantares',
+  Isa: 'isaias', Jer: 'jeremias', Lam: 'lamentaciones', Ezek: 'ezequiel', Dan: 'daniel',
+  Hos: 'oseas', Joel: 'joel', Amos: 'amos', Obad: 'abdias', Jonah: 'jonas',
+  Mic: 'miqueas', Nah: 'nahum', Hab: 'habacuc', Zeph: 'sofonias',
+  Hag: 'hageo', Zech: 'zacarias', Mal: 'malaquias',
   // New Testament
-  Mat: 'mateo', Mrk: 'marcos', Luk: 'lucas', Jhn: 'juan', Act: 'hechos',
-  Rom: 'romanos', '1Co': '1-corintios', '2Co': '2-corintios', Gal: 'galatas',
-  Eph: 'efesios', Php: 'filipenses', Col: 'colosenses',
-  '1Th': '1-tesalonicenses', '2Th': '2-tesalonicenses',
-  '1Ti': '1-timoteo', '2Ti': '2-timoteo', Tit: 'tito', Phm: 'filemon',
-  Heb: 'hebreos', Jas: 'santiago', '1Pe': '1-pedro', '2Pe': '2-pedro',
-  '1Jn': '1-juan', '2Jn': '2-juan', '3Jn': '3-juan', Jud: 'judas', Rev: 'apocalipsis',
+  Matt: 'mateo', Mark: 'marcos', Luke: 'lucas', John: 'juan', Acts: 'hechos',
+  Rom: 'romanos', '1Cor': '1-corintios', '2Cor': '2-corintios', Gal: 'galatas',
+  Eph: 'efesios', Phil: 'filipenses', Col: 'colosenses',
+  '1Thess': '1-tesalonicenses', '2Thess': '2-tesalonicenses',
+  '1Tim': '1-timoteo', '2Tim': '2-timoteo', Titus: 'tito', Phlm: 'filemon',
+  Heb: 'hebreos', Jas: 'santiago', '1Pet': '1-pedro', '2Pet': '2-pedro',
+  '1John': '1-juan', '2John': '2-juan', '3John': '3-juan', Jude: 'judas', Rev: 'apocalipsis',
 };
 
 interface TskImportRow {
@@ -46,12 +46,22 @@ interface TskImportRow {
   refVersiculoEnd: number;
 }
 
+/** Parse "Gen.1.1" → { abbr: "Gen", chapter: 1, verse: 1 } */
+function parseVerseRef(raw: string): { abbr: string; chapter: number; verse: number } | null {
+  const parts = raw.split('.');
+  if (parts.length < 3) return null;
+  const abbr = parts[0];
+  const chapter = parseInt(parts[1], 10);
+  const verse = parseInt(parts[2], 10);
+  if (isNaN(chapter) || isNaN(verse)) return null;
+  return { abbr, chapter, verse };
+}
+
 export async function importTsk() {
-  console.info('TSK: Downloading cross-references.zip from OpenBible.info...');
+  console.info('TSK: Reading cross-references.zip...');
   const zip = await readOrDownloadZip();
   const entries = unzipSync(new Uint8Array(zip));
 
-  // Find the cross-references text file in the zip
   const txtEntry = Object.keys(entries).find((name) => name.endsWith('.txt'));
   if (!txtEntry) throw new Error('TSK: no .txt file found in cross_references.zip.');
 
@@ -63,57 +73,63 @@ export async function importTsk() {
   // Pre-load libro slug → id map from the database
   const allLibros = await db.select({ id: libros.id, slug: libros.slug }).from(libros);
   const slugToId = new Map(allLibros.map((l) => [l.slug, l.id]));
+  console.info(`TSK: Loaded ${slugToId.size} libros from database.`);
 
-  // Track unmapped OSIS abbreviations for validation
   const unmapped = new Set<string>();
-
   const rows: TskImportRow[] = [];
 
   for (const line of lines) {
     const fields = line.split('\t');
-    if (fields.length < 5) continue;
+    if (fields.length < 3) continue;
 
-    const fromAbb = fields[0]?.trim();
-    const [fromCh, fromVs] = fields[1]?.trim().split(':') ?? [];
-    const toAbb = fields[2]?.trim();
-    const [toCh, toVs] = fields[3]?.trim().split(':') ?? [];
-    // field[4] is rating — we skip it
+    const fromRaw = fields[0]?.trim();
+    const toRaw = fields[1]?.trim();
+    // fields[2] is votes, fields[3] is comment — both ignored
 
-    // Map OSIS → slug
-    const fromSlug = OSIS_TO_SLUG[fromAbb];
-    const toSlug = OSIS_TO_SLUG[toAbb];
+    if (!fromRaw || !toRaw) continue;
 
-    if (!fromSlug) { unmapped.add(fromAbb); continue; }
-    if (!toSlug) { unmapped.add(toAbb); continue; }
+    // Parse source verse
+    const fromRef = parseVerseRef(fromRaw);
+    if (!fromRef) continue;
 
+    const fromSlug = ABBR_TO_SLUG[fromRef.abbr];
+    if (!fromSlug) { unmapped.add(fromRef.abbr); continue; }
     const fromLibroId = slugToId.get(fromSlug);
+    if (!fromLibroId) continue;
+
+    // Target can be a single verse or a range (e.g., "Ps.148.4-Ps.148.5")
+    // For cross-book ranges, only the first verse is used
+    const toParts = toRaw.split('-');
+    const toRef = parseVerseRef(toParts[0]);
+    if (!toRef) continue;
+
+    const toSlug = ABBR_TO_SLUG[toRef.abbr];
+    if (!toSlug) { unmapped.add(toRef.abbr); continue; }
     const toLibroId = slugToId.get(toSlug);
+    if (!toLibroId) continue;
 
-    if (!fromLibroId || !toLibroId) continue;
-
-    const fromChapter = parseInt(fromCh, 10);
-    const fromVerse = parseInt(fromVs, 10);
-    const toChapter = parseInt(toCh, 10);
-
-    if (isNaN(fromChapter) || isNaN(fromVerse) || isNaN(toChapter)) continue;
-
-    // Parse target verse range (e.g., "1-3" or just "1")
-    const [vsStart, vsEnd] = toVs.includes('-') ? toVs.split('-').map(Number) : [parseInt(toVs, 10), parseInt(toVs, 10)];
-    if (isNaN(vsStart) || isNaN(vsEnd)) continue;
+    // Determine end verse: if range, use second part; otherwise same as start
+    let refVersiculoEnd = toRef.verse;
+    if (toParts.length > 1) {
+      const toRefEnd = parseVerseRef(toParts[1]);
+      if (toRefEnd && toRefEnd.chapter === toRef.chapter && toRefEnd.abbr === toRef.abbr) {
+        refVersiculoEnd = toRefEnd.verse;
+      }
+    }
 
     rows.push({
       libroId: fromLibroId,
-      capitulo: fromChapter,
-      versiculo: fromVerse,
+      capitulo: fromRef.chapter,
+      versiculo: fromRef.verse,
       refLibroId: toLibroId,
-      refCapitulo: toChapter,
-      refVersiculoStart: vsStart,
-      refVersiculoEnd: vsEnd,
+      refCapitulo: toRef.chapter,
+      refVersiculoStart: toRef.verse,
+      refVersiculoEnd,
     });
   }
 
   if (unmapped.size > 0) {
-    console.warn(`TSK: ${unmapped.size} unmapped OSIS abbreviations: ${[...unmapped].join(', ')}`);
+    console.warn(`TSK: ${unmapped.size} unmapped abbreviations: ${[...unmapped].sort().join(', ')}`);
   }
 
   console.info(`TSK: Inserting ${rows.length} cross-references in batches of 350...`);
@@ -156,7 +172,6 @@ function chunkArray<T>(items: T[], size: number): T[][] {
   return chunks;
 }
 
-// Self-executing when run directly
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   importTsk().catch((error) => {
     console.error(error);
