@@ -18,7 +18,7 @@ const tituloDia = `${diaNum} de ${nombreMes}`;
         <p class="text-sm font-semibold uppercase tracking-[0.24em] text-brand-cianDark dark:text-brand-cianClaro">Ríos de Vida</p>
         <h1 class="mt-4 max-w-3xl text-4xl font-bold tracking-tight sm:text-6xl">Leé, buscá y prepará tu estudio bíblico sin ruido.</h1>
         <p class="mt-5 max-w-2xl text-base leading-7 text-slate-600 dark:text-slate-400">
-          Elegí una versión, un libro y un capítulo para empezar a leer, o buscá una palabra o referencia en toda la Biblia desde un solo lugar.
+          Elegí una versión, un libro y un capítulo para empezar a leer, o buscá una palabra, frase o referencia en toda la Biblia desde un solo lugar.
         </p>
 
         <div class="mt-8">
@@ -26,27 +26,50 @@ const tituloDia = `${diaNum} de ${nombreMes}`;
         </div>
 
         <form
-          action="/buscar"
-          method="get"
-          class="mt-6 grid gap-3 sm:grid-cols-[1fr_auto]"
+          id="search-form"
+          class="mt-6 grid gap-3"
           role="search"
           aria-label="Buscar en la Biblia"
         >
           <label class="sr-only" for="home-search">Buscar en la Biblia</label>
-          <input
-            id="home-search"
-            name="q"
-            class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none ring-brand-cian transition placeholder:text-slate-400 focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
-            type="search"
-            placeholder="Juan 3:16, reino, justicia..."
-          />
-          <button
-            type="submit"
-            class="inline-flex items-center justify-center rounded-2xl bg-brand-cianDark px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-brand-cianDark/90 focus:outline-none focus:ring-2 focus:ring-brand-cian focus:ring-offset-2 dark:focus:ring-offset-slate-900"
-          >
-            Buscar
-          </button>
+          <div class="grid gap-3 sm:grid-cols-[1fr_auto]">
+            <input
+              id="home-search"
+              name="q"
+              class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none ring-brand-cian transition placeholder:text-slate-400 focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+              type="search"
+              autocomplete="off"
+              placeholder="Juan 3:16, reino, justicia..."
+            />
+            <button
+              type="submit"
+              class="inline-flex items-center justify-center rounded-2xl bg-brand-cianDark px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-brand-cianDark/90 focus:outline-none focus:ring-2 focus:ring-brand-cian focus:ring-offset-2 dark:focus:ring-offset-slate-900"
+            >
+              Buscar
+            </button>
+          </div>
+
+          <fieldset id="version-filters" class="flex flex-wrap gap-2">
+            <legend class="sr-only">Versiones a incluir en la búsqueda</legend>
+            <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium transition has-checked:border-brand-cianDark has-checked:bg-brand-cianDark has-checked:text-white dark:border-slate-700 dark:has-checked:border-brand-cianClaro dark:has-checked:bg-brand-cianClaro dark:has-checked:text-slate-950">
+              <input type="checkbox" name="version" value="spapddpt" checked class="sr-only" /> PDPT
+            </label>
+            <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium transition has-checked:border-brand-cianDark has-checked:bg-brand-cianDark has-checked:text-white dark:border-slate-700 dark:has-checked:border-brand-cianClaro dark:has-checked:bg-brand-cianClaro dark:has-checked:text-slate-950">
+              <input type="checkbox" name="version" value="sparvg" class="sr-only" /> RVG
+            </label>
+            <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium transition has-checked:border-brand-cianDark has-checked:bg-brand-cianDark has-checked:text-white dark:border-slate-700 dark:has-checked:border-brand-cianClaro dark:has-checked:bg-brand-cianClaro dark:has-checked:text-slate-950">
+              <input type="checkbox" name="version" value="spaRV1909" class="sr-only" /> RVR1909
+            </label>
+            <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium transition has-checked:border-brand-cianDark has-checked:bg-brand-cianDark has-checked:text-white dark:border-slate-700 dark:has-checked:border-brand-cianClaro dark:has-checked:bg-brand-cianClaro dark:has-checked:text-slate-950">
+              <input type="checkbox" name="version" value="mensaje" class="sr-only" /> MSG
+            </label>
+          </fieldset>
         </form>
+
+        <div id="search-results-section" class="hidden mt-6" aria-live="polite">
+          <p id="search-status" class="text-sm text-slate-500 dark:text-slate-400"></p>
+          <ol id="search-results" class="mt-3 space-y-3"></ol>
+        </div>
 
         {
           readings.length === 0 ? (
@@ -86,4 +109,115 @@ const tituloDia = `${diaNum} de ${nombreMes}`;
       </article>
     </section>
   </main>
+
+  <script>
+    interface SearchResult {
+      version: string;
+      versionNombre: string;
+      book: string;
+      chapter: number;
+      verse: number;
+      text: string;
+      href: string;
+    }
+
+    const form = document.getElementById('search-form') as HTMLFormElement | null;
+    const input = document.getElementById('home-search') as HTMLInputElement | null;
+    const statusEl = document.getElementById('search-status');
+    const resultsEl = document.getElementById('search-results');
+    const resultsSection = document.getElementById('search-results-section');
+
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function getSelectedVersions(): string {
+      const checkboxes = form?.querySelectorAll<HTMLInputElement>('input[name="version"]:checked');
+      if (!checkboxes) return '';
+      return Array.from(checkboxes).map((cb) => cb.value).join(',');
+    }
+
+    async function doSearch(query: string) {
+      if (!statusEl || !resultsEl || !resultsSection) return;
+
+      const q = query.trim();
+      if (q.length < 2) {
+        resultsSection.classList.add('hidden');
+        resultsEl.textContent = '';
+        return;
+      }
+
+      const versiones = getSelectedVersions();
+      const params = new URLSearchParams({ q, versiones });
+      const url = `/buscar.json?${params.toString()}`;
+
+      statusEl.textContent = 'Buscando...';
+      resultsSection.classList.remove('hidden');
+
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Error ${response.status}`);
+
+        const data = await response.json();
+        const results: SearchResult[] = data.results ?? [];
+
+        if (results.length === 0) {
+          statusEl.textContent = `Sin resultados para "${q}".`;
+        } else {
+          statusEl.textContent = `${results.length} resultado${results.length === 1 ? '' : 's'} para "${q}":`;
+        }
+
+        resultsEl.textContent = '';
+        for (const r of results) {
+          const li = document.createElement('li');
+          li.className = 'rounded-2xl border border-slate-200 p-4 dark:border-slate-800';
+
+          const link = document.createElement('a');
+          link.className = 'font-bold text-brand-cianDark underline decoration-brand-cianClaro underline-offset-4 dark:text-brand-cianClaro';
+          link.href = r.href;
+          link.textContent = `${r.book} ${r.chapter}:${r.verse} (${r.versionNombre})`;
+
+          const text = document.createElement('p');
+          text.className = 'mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300';
+          text.textContent = r.text;
+
+          li.append(link, text);
+          resultsEl.append(li);
+        }
+      } catch (error) {
+        console.error(error);
+        statusEl.textContent = 'Error al buscar. Intentá de nuevo.';
+      }
+    }
+
+    function handleInput() {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        if (input) doSearch(input.value);
+      }, 300);
+    }
+
+    form?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      if (debounceTimer) clearTimeout(debounceTimer);
+      if (input) doSearch(input.value);
+    });
+
+    input?.addEventListener('input', handleInput);
+
+    // Re-search when version toggles change
+    form?.querySelectorAll('input[name="version"]').forEach((cb) => {
+      cb.addEventListener('change', () => {
+        if (input && input.value.trim().length >= 2) doSearch(input.value);
+      });
+    });
+
+    // Check for ?q= param on load (from shared links)
+    {
+      const params = new URLSearchParams(window.location.search);
+      const q = params.get('q');
+      if (q && input) {
+        input.value = q;
+        doSearch(q);
+      }
+    }
+  </script>
 </MainLayout>
