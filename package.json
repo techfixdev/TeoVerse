@@ -14,6 +14,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push --force",
     "db:seed": "tsx src/db/seed.ts",
+    "db:seed-plan": "tsx scripts/seed-plan-lectura.ts",
     "import:spapddpt": "tsx scripts/import-spapddpt.ts",
     "import:sparvg": "tsx scripts/import-sparvg.ts",
     "import:sparv1909": "tsx scripts/import-sparv1909.ts",

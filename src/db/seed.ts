@@ -1,7 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { db } from './client';
 import { recursos, libros, recursoLibros, versiculos, diccionarioEntradas } from './schema';
-import { seedPlanLectura } from './seed-plan-lectura';
 
 async function seed() {
   const [createdRecurso] = await db
@@ -114,8 +113,6 @@ async function seed() {
       },
     ])
     .onConflictDoNothing();
-
-  await seedPlanLectura();
 
   console.info('Seed spapddpt completado correctamente.');
 }

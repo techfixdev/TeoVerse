@@ -18,6 +18,8 @@ runPnpmScript('import:sparv1909');
 runPnpmScript('import:mensaje');
 // import:tsk carga las referencias cruzadas TSK desde OpenBible.info (~340K filas).
 runPnpmScript('import:tsk');
+// db:seed-plan carga el plan de lectura diaria (depende de que libros ya exista).
+runPnpmScript('db:seed-plan');
 
 function runPnpmScript(script: string) {
   const result = spawnSync('pnpm', ['run', script], {
