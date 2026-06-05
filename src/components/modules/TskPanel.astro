@@ -1,0 +1,192 @@
+---
+/**
+ * TskPanel — TSK cross-reference panel island.
+ *
+ * Mounted in the `panels` slot of WorkspaceLayout. Subscribes to `$senalTsk`
+ * via nanostores. On each signal:
+ *   1. Reads the reference list from the signal payload (already parsed from DOM).
+ *   2. Calls `actualizarModulo('tsk', { habilitado: true, modo: 'normal' })`
+ *      to open the panel via $workspace.
+ *   3. Renders clickable `<a>` links to canonical verse URLs.
+ *
+ * No runtime fetches — all data arrives via the signal (prerendered in data-tsk-refs).
+ *
+ * States:
+ *   - Idle: "Haz clic en un marcador de referencia para ver las referencias cruzadas."
+ *   - Loaded: list of reference links grouped by target book
+ *   - Error: "Error al cargar referencias."
+ *   - Closed (modo: 'cerrado'): panel element hidden via CSS (ws-tsk-closed)
+ *
+ * Open/close driven entirely through $workspace `modo` (locked contract).
+ * Mobile: fixed bottom sheet. Desktop (lg:): sticky side panel via workspace-panels aside.
+ *
+ * The <script> runs on parse; no client:* directive needed (.astro island pattern).
+ */
+---
+
+<div id="tsk-panel" class="tsk-panel" role="complementary" aria-label="Referencias cruzadas">
+
+  {/* Panel header — always visible when panel is open */}
+  <div class="tsk-panel__header">
+    <span class="tsk-panel__title">Referencias Cruzadas</span>
+    <button
+      id="tsk-panel-close"
+      class="tsk-panel__close"
+      aria-label="Cerrar panel de referencias"
+      type="button"
+    >
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M2 2L14 14M14 2L2 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+
+  {/* Panel body — dynamically updated by the script */}
+  <div id="tsk-panel-body" class="tsk-panel__body" aria-live="polite">
+    <p class="tsk-panel__idle">Haz clic en un marcador de referencia para ver las referencias cruzadas.</p>
+  </div>
+
+</div>
+
+<script>
+  import { $senalTsk, type SenalTsk } from '@/stores/referencia';
+  import { actualizarModulo } from '@/stores/workspace';
+  import { $referencia } from '@/stores/referencia';
+
+  const body    = document.getElementById('tsk-panel-body');
+  const closeBtn = document.getElementById('tsk-panel-close');
+  const panel    = document.getElementById('tsk-panel');
+
+  // -------------------------------------------------------------------------
+  // Open / close helpers
+  // -------------------------------------------------------------------------
+
+  function openPanel() {
+    document.documentElement.classList.add('ws-tsk-open');
+    document.documentElement.classList.remove('ws-tsk-closed');
+    actualizarModulo('tsk', { habilitado: true, modo: 'normal' });
+  }
+
+  function closePanel() {
+    document.documentElement.classList.remove('ws-tsk-open');
+    document.documentElement.classList.add('ws-tsk-closed');
+    actualizarModulo('tsk', { habilitado: true, modo: 'cerrado' });
+  }
+
+  // -------------------------------------------------------------------------
+  // Render helpers
+  // -------------------------------------------------------------------------
+
+  function renderReferences(senal: SenalTsk) {
+    if (!body) return;
+
+    const version = $referencia.get()?.version ?? '';
+    const refs = senal.referencias;
+    const limit = 30;
+    const visible = refs.slice(0, limit);
+    const hidden = refs.slice(limit);
+
+    const links = visible.map((ref) => {
+      const label = ref.versiculo_start === ref.versiculo_end
+        ? `${ref.libro} ${ref.capitulo}:${ref.versiculo_start}`
+        : `${ref.libro} ${ref.capitulo}:${ref.versiculo_start}-${ref.versiculo_end}`;
+
+      const href = `/biblia/${version}/${ref.libro_slug}/${ref.capitulo}/#v${ref.versiculo_start}`;
+
+      return `<a class="tsk-reference" href="${escAttr(href)}">${escHtml(label)}</a>`;
+    }).join('');
+
+    const hasMore = hidden.length > 0 ? `
+      <details class="tsk-panel__more">
+        <summary class="tsk-panel__more-toggle">Mostrar todas (${hidden.length} más)</summary>
+        <div class="tsk-panel__more-list">
+          ${hidden.map((ref) => {
+            const label = ref.versiculo_start === ref.versiculo_end
+              ? `${ref.libro} ${ref.capitulo}:${ref.versiculo_start}`
+              : `${ref.libro} ${ref.capitulo}:${ref.versiculo_start}-${ref.versiculo_end}`;
+            const href = `/biblia/${version}/${ref.libro_slug}/${ref.capitulo}/#v${ref.versiculo_start}`;
+            return `<a class="tsk-reference" href="${escAttr(href)}">${escHtml(label)}</a>`;
+          }).join('')}
+        </div>
+      </details>
+    ` : '';
+
+    body.innerHTML = `
+      <p class="tsk-panel__verse-ref">
+        ${escHtml($referencia.get()?.libro ?? '')} ${senal.versiculo}
+      </p>
+      <div class="tsk-panel__refs">${links}</div>
+      ${hasMore}
+    `;
+  }
+
+  function renderError() {
+    if (!body) return;
+    body.innerHTML = `<p class="tsk-panel__error">Error al cargar referencias.</p>`;
+  }
+
+  // -------------------------------------------------------------------------
+  // Utility
+  // -------------------------------------------------------------------------
+
+  function escHtml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function escAttr(str: string): string {
+    return str.replace(/"/g, '&quot;');
+  }
+
+  // -------------------------------------------------------------------------
+  // Wire up store subscription
+  // -------------------------------------------------------------------------
+
+  let lastMarker: HTMLElement | null = null;
+
+  const unsubscribeSenal = $senalTsk.subscribe((senal) => {
+    if (!senal) return;
+    try {
+      renderReferences(senal);
+      openPanel();
+    } catch {
+      renderError();
+    }
+  });
+
+  window.addEventListener('pagehide', () => {
+    unsubscribeSenal();
+  }, { once: true });
+
+  // Close button
+  closeBtn?.addEventListener('click', closePanel);
+
+  // -------------------------------------------------------------------------
+  // Keyboard: Escape to close + return focus (NF-XR-05)
+  // -------------------------------------------------------------------------
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    const isOpen = document.documentElement.classList.contains('ws-tsk-open');
+    if (!isOpen) return;
+
+    closePanel();
+
+    // Return focus to the triggering marker
+    if (lastMarker) {
+      lastMarker.focus();
+    }
+  });
+
+  // Track the last clicked marker for focus return
+  document.addEventListener('click', (event) => {
+    const target = (event.target as HTMLElement).closest('[data-tsk-refs]') as HTMLElement | null;
+    if (target) {
+      lastMarker = target;
+    }
+  });
+</script>

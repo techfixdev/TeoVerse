@@ -1,0 +1,62 @@
+---
+/**
+ * TskClickProxy — event-delegation island for TSK cross-reference marker clicks.
+ *
+ * Attaches ONE delegated click listener on the reading container
+ * (`<main class="module-lectura">`). When a `[data-tsk-refs]` element is
+ * clicked it reads `data-tsk-refs` (JSON reference array) from the element
+ * and calls `$senalTsk.set(...)`.
+ *
+ * Does NOT handle panel open/close — that is TskPanel's responsibility.
+ * Uses event delegation so a single listener covers the entire chapter,
+ * no matter how many verse markers are rendered.
+ *
+ * The script runs on parse (inline <script> bundled by Astro).
+ * The listener is cleaned up on page unload to avoid leaks.
+ */
+---
+
+<script>
+  import { $senalTsk } from '@/stores/referencia';
+  import { $senalStrong } from '@/stores/referencia';
+
+  function attach() {
+    const container = document.querySelector<HTMLElement>('main.module-lectura');
+    if (!container) return;
+
+    function handleClick(event: MouseEvent) {
+      const target = (event.target as HTMLElement).closest('[data-tsk-refs]') as HTMLElement | null;
+      if (!target) return;
+
+      const raw = target.dataset.tskRefs;
+      if (!raw) return;
+
+      try {
+        const referencias = JSON.parse(raw);
+        const versiculoText = target.closest('li[id^="v"]')?.id.replace('v', '');
+        const versiculo = versiculoText ? parseInt(versiculoText, 10) : 0;
+
+        $senalTsk.set({ versiculo, referencias });
+
+        // Mutual exclusion: close Strong panel
+        $senalStrong.set(null);
+      } catch {
+        // Corrupted JSON — silently ignore
+      }
+    }
+
+    container.addEventListener('click', handleClick);
+
+    // Cleanup on page navigation / unload
+    window.addEventListener('pagehide', () => {
+      container.removeEventListener('click', handleClick);
+    }, { once: true });
+  }
+
+  // Run after DOM is available
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', attach, { once: true });
+  } else {
+    attach();
+  }
+</script>

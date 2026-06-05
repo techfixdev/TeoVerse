@@ -106,7 +106,8 @@ html:not(.ws-workspace-ready) .workspace-chrome {
   display: none;
 }
 
-html.ws-strong-open .workspace-panels {
+html.ws-strong-open .workspace-panels,
+html.ws-tsk-open .workspace-panels {
   display: block;
 }
 
@@ -338,6 +339,215 @@ html.ws-strong-open .strong-panel {
 }
 
 .strong-panel__retry:focus-visible {
+  outline: 2px solid var(--brand-cian-dark);
+  outline-offset: 1px;
+}
+
+/* ---------------------------------------------------------------------------
+ * TSK cross-reference marker — inline superscript badge
+ * Mirror of .palabra-strong but rendered as a small count badge (ⁿ).
+ * --------------------------------------------------------------------------- */
+
+.tsk-marker {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.65em;
+  font-weight: 700;
+  color: var(--brand-cian-dark);
+  cursor: pointer;
+  display: inline;
+  vertical-align: super;
+  line-height: 1;
+  margin-inline-start: 0.15em;
+  border-radius: 3px;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.tsk-marker:hover {
+  color: var(--brand-base);
+  background-color: var(--brand-cian-dark);
+}
+
+.tsk-marker:focus-visible {
+  outline: 2px solid var(--brand-cian-dark);
+  outline-offset: 1px;
+  color: var(--brand-base);
+  background-color: var(--brand-cian-dark);
+}
+
+/* ---------------------------------------------------------------------------
+ * TSK panel — layout and visual styles
+ * Open/close driven by html.ws-tsk-open / html.ws-tsk-closed classes
+ * set by bootstrap.ts + TskPanel island.
+ *
+ * Mirrors .strong-panel pattern:
+ * Mobile:  fixed bottom sheet (slides up from bottom, max 60vh).
+ * Desktop (lg:): rendered in the workspace-panels aside (sticky side column).
+ * --------------------------------------------------------------------------- */
+
+/* Base panel — hidden by default; shown via ws-tsk-open or desktop aside */
+.tsk-panel {
+  display: none;
+  flex-direction: column;
+  background-color: var(--brand-base);
+  border-top: 2px solid var(--brand-cian-dark);
+  overflow: hidden;
+}
+
+html.ws-tsk-open .tsk-panel {
+  display: flex;
+}
+
+/* Mobile: fixed bottom sheet */
+@media (max-width: 1023px) {
+  .tsk-panel {
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: 50;
+    max-height: 60vh;
+    border-radius: 1rem 1rem 0 0;
+    box-shadow: 0 -4px 24px rgb(0 0 0 / 0.12);
+    overflow-y: auto;
+  }
+}
+
+/* Desktop: fills the aside naturally — no fixed positioning */
+@media (min-width: 1024px) {
+  .tsk-panel {
+    display: flex;
+    border-radius: 0.75rem;
+    border: 1px solid var(--brand-cian-dark);
+    margin-block: 0.5rem;
+    box-shadow: 0 2px 12px rgb(0 0 0 / 0.06);
+  }
+
+  .tsk-panel__close {
+    display: none;
+  }
+}
+
+/* Panel header */
+.tsk-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--brand-cian-claro);
+  flex-shrink: 0;
+}
+
+.tsk-panel__title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--brand-cian-dark);
+}
+
+/* Close button */
+.tsk-panel__close {
+  appearance: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--brand-gris);
+  padding: 0.25rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s ease;
+}
+
+.tsk-panel__close:hover {
+  color: var(--brand-cian-dark);
+}
+
+.tsk-panel__close:focus-visible {
+  outline: 2px solid var(--brand-cian-dark);
+  outline-offset: 1px;
+  color: var(--brand-cian-dark);
+}
+
+/* Panel body */
+.tsk-panel__body {
+  padding: 1rem;
+  flex: 1;
+  overflow-y: auto;
+  overflow-wrap: break-word;
+}
+
+.tsk-panel__idle {
+  font-size: 0.875rem;
+  color: var(--brand-gris);
+  text-align: center;
+  padding-block: 1rem;
+}
+
+.tsk-panel__verse-ref {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--brand-cian-dark);
+  margin-bottom: 0.5rem;
+}
+
+.tsk-panel__refs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+}
+
+.tsk-panel__error {
+  font-size: 0.875rem;
+  color: #b91c1c;
+  margin-top: 0.5rem;
+}
+
+.tsk-panel__more {
+  margin-top: 0.5rem;
+}
+
+.tsk-panel__more-toggle {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--brand-cian-dark);
+  cursor: pointer;
+}
+
+.tsk-panel__more-toggle:hover {
+  text-decoration: underline;
+}
+
+.tsk-panel__more-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+  margin-top: 0.25rem;
+  padding-left: 0.5rem;
+  border-left: 2px solid var(--brand-cian-claro);
+}
+
+/* TSK reference link */
+.tsk-reference {
+  font-size: 0.8125rem;
+  color: var(--brand-cian-dark);
+  text-decoration: none;
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+}
+
+.tsk-reference:hover {
+  background-color: color-mix(in srgb, var(--brand-cian-dark) 15%, transparent);
+  color: var(--brand-cian-dark);
+}
+
+.tsk-reference:focus-visible {
   outline: 2px solid var(--brand-cian-dark);
   outline-offset: 1px;
 }
