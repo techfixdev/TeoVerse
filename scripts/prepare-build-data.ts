@@ -20,6 +20,9 @@ runPnpmScript('import:mensaje');
 runPnpmScript('import:tsk');
 // db:seed-plan carga el plan de lectura diaria (depende de que libros ya exista).
 runPnpmScript('db:seed-plan');
+// build:fts MUST run last — importers DELETE+reinsert versiculos, so rowids are
+// unstable until all imports finish. External-content FTS5 rebuild needs settled rowids.
+runPnpmScript('build:fts');
 
 function runPnpmScript(script: string) {
   const result = spawnSync('pnpm', ['run', script], {
