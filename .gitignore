@@ -12,6 +12,7 @@ package-lock.json
 # Full approved Bible source drops stay local. Keep fixtures/usfm tracked.
 fuentes-aprobadas/
 sources/
+!sources/tsk/
 
 # Local SDD tooling state (machine-specific absolute paths + cache)
 .atl/

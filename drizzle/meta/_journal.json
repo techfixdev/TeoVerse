@@ -10,12 +10,21 @@
       "breakpoints": true
     },
     {
-      "idx": 1,
+      "idx": 2,
       "version": "6",
-      "when": 1780300000000,
-      "tag": "0001_recursos_schema",
+      "when": 1748815200000,
+      "tag": "0002_versiculos_tokens",
       "breakpoints": true
     }
+    ,{
+      "idx": 3,
+      "version": "6",
+      "when": 1749064320000,
+      "tag": "0003_tsk_referencias",
+      "breakpoints": true
+    }
+  ]
+}
     ,{
       "idx": 2,
       "version": "6",

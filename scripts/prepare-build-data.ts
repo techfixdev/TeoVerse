@@ -16,6 +16,8 @@ runPnpmScript('import:sparvg');
 runPnpmScript('import:sparv1909');
 // import:mensaje parsea el HTML "El Mensaje" (Ríos de Vida); paráfrasis sin Strong.
 runPnpmScript('import:mensaje');
+// import:tsk carga las referencias cruzadas TSK desde OpenBible.info (~340K filas).
+runPnpmScript('import:tsk');
 
 function runPnpmScript(script: string) {
   const result = spawnSync('pnpm', ['run', script], {

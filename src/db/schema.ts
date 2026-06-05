@@ -84,6 +84,25 @@ export const versiculosTokens = sqliteTable(
   ],
 );
 
+export const tskReferencias = sqliteTable(
+  'tsk_referencias',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    libroId: integer('libro_id')
+      .notNull()
+      .references(() => libros.id),
+    capitulo: integer('capitulo').notNull(),
+    versiculo: integer('versiculo').notNull(),
+    refLibroId: integer('ref_libro_id')
+      .notNull()
+      .references(() => libros.id),
+    refCapitulo: integer('ref_capitulo').notNull(),
+    refVersiculoStart: integer('ref_versiculo_start').notNull(),
+    refVersiculoEnd: integer('ref_versiculo_end').notNull(),
+  },
+  (table) => [index('tsk_ref_source_idx').on(table.libroId, table.capitulo, table.versiculo)],
+);
+
 export const diccionarioEntradas = sqliteTable(
   'diccionario_entradas',
   {
@@ -100,6 +119,11 @@ export const diccionarioEntradas = sqliteTable(
 
 // Relations
 
+export const tskReferenciasRelations = relations(tskReferencias, ({ one }) => ({
+  libro: one(libros, { fields: [tskReferencias.libroId], references: [libros.id] }),
+  refLibro: one(libros, { fields: [tskReferencias.refLibroId], references: [libros.id] }),
+}));
+
 export const recursosRelations = relations(recursos, ({ many }) => ({
   recursoLibros: many(recursoLibros),
   versiculos: many(versiculos),
@@ -109,6 +133,7 @@ export const recursosRelations = relations(recursos, ({ many }) => ({
 export const librosRelations = relations(libros, ({ many }) => ({
   recursoLibros: many(recursoLibros),
   versiculos: many(versiculos),
+  tskReferencias: many(tskReferencias),
 }));
 
 export const recursoLibrosRelations = relations(recursoLibros, ({ one }) => ({
@@ -144,3 +169,5 @@ export type EntradaDiccionario = typeof diccionarioEntradas.$inferSelect;
 export type NuevaEntradaDiccionario = typeof diccionarioEntradas.$inferInsert;
 export type VersiculoToken = typeof versiculosTokens.$inferSelect;
 export type NuevoVersiculoToken = typeof versiculosTokens.$inferInsert;
+export type TskReferencia = typeof tskReferencias.$inferSelect;
+export type NuevaTskReferencia = typeof tskReferencias.$inferInsert;

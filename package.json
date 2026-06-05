@@ -18,6 +18,7 @@
     "import:sparvg": "tsx scripts/import-sparvg.ts",
     "import:sparv1909": "tsx scripts/import-sparv1909.ts",
     "import:mensaje": "tsx scripts/import-mensaje.ts",
+    "import:tsk": "tsx scripts/import-tsk.ts",
     "prepare:build-data": "tsx scripts/prepare-build-data.ts",
     "verify": "pnpm prepare:build-data && pnpm verify:bible-queries && pnpm verify:search-index && pnpm verify:selector-manifest && pnpm verify:usfm-parser && pnpm verify:usfm-importer && pnpm verify:usfm-interlinear && pnpm verify:tokens && pnpm verify:strong && pnpm build:astro",
     "verify:bible-queries": "tsx scripts/verify-bible-queries.ts",
