@@ -132,11 +132,11 @@
 
 ## Phase 6 — Daily Readings Parameterization (PR-2, sequential)
 
-- [ ] **T-6.1** Refactor `getDailyReadings` in `src/db/queries.ts` to accept `version: string = 'spapddpt'`. Replace the hardcoded `eq(recursos.slug, 'spapddpt')` at line ~250 with `eq(recursos.slug, version)`. The default keeps the existing build-time call in `index.astro` working unchanged (no-JS fallback).
+- [x] **T-6.1** Refactor `getDailyReadings` in `src/db/queries.ts` to accept `version: string = 'spapddpt'`. Replace the hardcoded `eq(recursos.slug, 'spapddpt')` at line ~250 with `eq(recursos.slug, version)`. The default keeps the existing build-time call in `index.astro` working unchanged (no-JS fallback).
   - **Spec**: DRV-1 (parameterized getDailyReadings), DRV-4 (spapddpt default for no-JS fallback)
   - **Parallel**: Start of PR-2; can run in parallel with T-7.1
 
-- [ ] **T-6.2** Create `src/pages/datos/lectura-diaria.json.ts` with `export const prerender = false`. Requirements:
+- [x] **T-6.2** Create `src/pages/datos/lectura-diaria.json.ts` with `export const prerender = false`. Requirements:
   - Extract `?version=X` param; if missing or empty, default to `'spapddpt'`.
   - Call `listBibliaVersions()` to get valid slugs. If the requested version is not in the list, return HTTP 400 with `{ error: 'invalid_version' }`.
   - Call `getDailyReadings(version)`.
@@ -145,7 +145,7 @@
   - **Spec**: DRV-2 (version-aware endpoint, 400 on unknown, 200 on default)
   - **Parallel**: No — must follow T-6.1 and T-2.2 (needs `listBibliaVersions`)
 
-- [ ] **T-6.3** Verify `index.astro` build-time call `await getDailyReadings()` (no argument) still works after T-6.1. The function must produce identical output to before when called without arguments. If the `index.astro` call signature needs updating (e.g., adding explicit `'spapddpt'` for clarity), do so.
+- [x] **T-6.3** Verify `index.astro` build-time call `await getDailyReadings()` (no argument) still works after T-6.1. The function must produce identical output to before when called without arguments. If the `index.astro` call signature needs updating (e.g., adding explicit `'spapddpt'` for clarity), do so.
   - **Spec**: DRV-4, cross-cutting: `pnpm build` MUST succeed
   - **Parallel**: No — must follow T-6.1
 
@@ -153,18 +153,18 @@
 
 ## Phase 7 — Daily Readings Skeleton + Client Island (PR-2, sequential after T-6.1)
 
-- [ ] **T-7.1** In `src/pages/index.astro` frontmatter: keep `await getDailyReadings()` call (renders `spapddpt` baseline for no-JS / first paint). Do NOT remove this call.
+- [x] **T-7.1** In `src/pages/index.astro` frontmatter: keep `await getDailyReadings()` call (renders `spapddpt` baseline for no-JS / first paint). Do NOT remove this call.
   - **Spec**: DRV-4 (static HTML default for no-JS)
   - **Parallel**: Can start in parallel with T-6.1
 
-- [ ] **T-7.2** Wrap the daily readings section in `index.astro` with a skeleton container. Requirements:
+- [x] **T-7.2** Wrap the daily readings section in `index.astro` with a skeleton container. Requirements:
   - The existing server-rendered readings markup stays as-is (spapddpt baseline).
   - Add a `data-daily-readings` wrapper element with a fixed min-height matching the typical readings block height (to prevent CLS when the client swaps content).
   - Add a visually hidden or aria-live skeleton element (`data-daily-readings-skeleton`) that becomes visible while the client fetch is in-flight. Mirror the BibleSelector island approach for skeleton sizing.
   - **Spec**: DRV-3 (skeleton state, no layout shift), DRV-4 (baseline shown until swap)
   - **Parallel**: No — must follow T-7.1
 
-- [ ] **T-7.3** Create a client island script (inline `<script>` in `index.astro` or extracted to `src/scripts/daily-readings-island.ts`). Requirements:
+- [x] **T-7.3** Create a client island script (inline `<script>` in `index.astro` or extracted to `src/scripts/daily-readings-island.ts`). Requirements:
   - On DOMContentLoaded: read `$selector.version` from nanostores persistent storage (same pattern as `BibleSelector`).
   - If version equals `'spapddpt'` or is absent: do nothing (baseline already rendered — zero flash).
   - Else: show skeleton (`data-daily-readings-skeleton`), fetch `/datos/lectura-diaria.json?version=<version>`.
@@ -178,15 +178,15 @@
 
 ## Phase 8 — Version Pills (PR-2, can run in parallel with Phase 7)
 
-- [ ] **T-8.1** In `src/pages/index.astro` frontmatter: call `listBibliaVersions()` (from T-2.2) to obtain the available versions at build time. Store in a variable (e.g., `const bibliaVersions = await listBibliaVersions()`).
+- [x] **T-8.1** In `src/pages/index.astro` frontmatter: call `listBibliaVersions()` (from T-2.2) to obtain the available versions at build time. Store in a variable (e.g., `const bibliaVersions = await listBibliaVersions()`).
   - **Spec**: PILLS-1 (DB-driven pill list, no hardcoded array)
   - **Parallel**: Can run alongside T-7.1
 
-- [ ] **T-8.2** Replace the four hardcoded `<label><input ... /></label>` pill elements inside `<fieldset id="version-filters">` in `index.astro` with a dynamic loop over `bibliaVersions`. Each pill must render identically to the current markup (same Tailwind classes), with `value={version.slug}` and `{version.nombre}` as the visible label. The first pill must NOT be hardcoded `checked` in SSR — checked state is managed by the client island (T-8.3).
+- [x] **T-8.2** Replace the four hardcoded `<label><input ... /></label>` pill elements inside `<fieldset id="version-filters">` in `index.astro` with a dynamic loop over `bibliaVersions`. Each pill must render identically to the current markup (same Tailwind classes), with `value={version.slug}` and `{version.nombre}` as the visible label. The first pill must NOT be hardcoded `checked` in SSR — checked state is managed by the client island (T-8.3).
   - **Spec**: PILLS-1 (no hardcoded array), PILLS-2 (client handles pre-check)
   - **Parallel**: No — must follow T-8.1
 
-- [ ] **T-8.3** Add a client-side pre-check island to `index.astro` (inline `<script>`). On DOMContentLoaded: read `$selector.version`; if present, find the matching checkbox by `value` and set `checked = true`; all others remain unchecked. If `$selector.version` is absent or null, set `spapddpt` checkbox to `checked = true` (never zero pills checked). This island MUST NOT write to `$selector.version`.
+- [x] **T-8.3** Add a client-side pre-check island to `index.astro` (inline `<script>`). On DOMContentLoaded: read `$selector.version`; if present, find the matching checkbox by `value` and set `checked = true`; all others remain unchecked. If `$selector.version` is absent or null, set `spapddpt` checkbox to `checked = true` (never zero pills checked). This island MUST NOT write to `$selector.version`.
   - **Spec**: PILLS-2 (pre-selection from persisted selector), PILLS-3 (session-scoped, no global mutation)
   - **Parallel**: No — must follow T-8.2
 
@@ -194,11 +194,11 @@
 
 ## Phase 9 — Cleanup (PR-2, can run in parallel with Phases 7–8)
 
-- [ ] **T-9.1** Grep the entire codebase for `listSearchDocuments` (including `src/`, `scripts/`, `pages/`). Confirm zero callers exist before deletion.
+- [x] **T-9.1** Grep the entire codebase for `listSearchDocuments` (including `src/`, `scripts/`, `pages/`). Confirm zero callers exist before deletion.
   - **Spec**: CLN-1 (confirm no callers before deletion)
   - **Parallel**: Can run early — read-only step
 
-- [ ] **T-9.2** Delete `listSearchDocuments()` function (lines 508–533 in `src/db/queries.ts`) and its associated `SearchDocument` type (if defined inline or nearby). Confirm the file still compiles after deletion.
+- [x] **T-9.2** Delete `listSearchDocuments()` function (lines 508–533 in `src/db/queries.ts`) and its associated `SearchDocument` type (if defined inline or nearby). Confirm the file still compiles after deletion.
   - **Spec**: CLN-1 (remove dead function)
   - **Parallel**: No — must follow T-9.1
 
@@ -206,7 +206,7 @@
 
 ## Phase 10 — Verification Scripts for PR-2 (PR-2, sequential)
 
-- [ ] **T-10.1** Create `scripts/verify-daily-readings.ts`. Requirements:
+- [x] **T-10.1** Create `scripts/verify-daily-readings.ts`. Requirements:
   - Call `getDailyReadings('sparvg')` and assert the returned readings (if any — plan entries may be 0) contain only verses with `recurso_id` matching `sparvg` (validates DRV-1).
   - Call `getDailyReadings('spapddpt')` and assert it returns the same output as `getDailyReadings()` with no argument (validates DRV-1 default).
   - Make an HTTP GET to `http://localhost:<port>/datos/lectura-diaria.json?version=sparvg` if a dev server is running, OR mock the endpoint call by directly calling the handler function — assert HTTP 200 + `version === 'sparvg'` (validates DRV-2).
@@ -215,11 +215,11 @@
   - **Spec**: DRV-1, DRV-2
   - **Parallel**: Can run alongside T-9.1
 
-- [ ] **T-10.2** Add `"verify:daily-readings": "tsx scripts/verify-daily-readings.ts"` to `package.json` scripts and insert it into the `verify` chain.
+- [x] **T-10.2** Add `"verify:daily-readings": "tsx scripts/verify-daily-readings.ts"` to `package.json` scripts and insert it into the `verify` chain.
   - **Spec**: cross-cutting: `pnpm verify` MUST pass
   - **Parallel**: No — must follow T-10.1
 
-- [ ] **T-10.3** Run `pnpm verify` locally (full chain). Confirm all existing verify scripts still pass. Confirm `verify:search-fts` and `verify:daily-readings` pass. Fix any TypeScript errors from the full `pnpm build:astro` check.
+- [x] **T-10.3** Run `pnpm verify` locally (full chain). Confirm all existing verify scripts still pass. Confirm `verify:search-fts` and `verify:daily-readings` pass. Fix any TypeScript errors from the full `pnpm build:astro` check.
   - **Spec**: cross-cutting: `pnpm verify` MUST pass, `pnpm build` MUST succeed
   - **Parallel**: No — final gate before PR submission
 
