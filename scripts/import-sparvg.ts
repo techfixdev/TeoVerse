@@ -1,11 +1,11 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { unzipSync, strFromU8 } from 'fflate';
 import { db } from '../src/db/client';
 import { SPARVG_BOOKS, SPARVG_SOURCE } from '../src/importers/sparvg-manifest';
-import { recursos, libros, recursoLibros, versiculos } from '../src/db/schema';
+import { recursos, libros, recursoLibros, versiculos, versiculosTokens } from '../src/db/schema';
 import { parseUsfmBook } from '../src/importers/usfm';
 
 const sourceDir = path.resolve('sources', SPARVG_SOURCE.slug);
@@ -43,6 +43,20 @@ export async function importSparvg() {
       fuente: SPARVG_SOURCE.source,
     })
     .where(eq(recursos.id, recurso.id));
+
+  // Borrar tokens huérfanos antes de borrar versículos (ON DELETE CASCADE no es fiable
+  // en SQLite sin PRAGMA foreign_keys = ON, que es el valor por defecto).
+  const versiculosParaBorrar = await db
+    .select({ id: versiculos.id })
+    .from(versiculos)
+    .where(eq(versiculos.recursoId, recurso.id));
+
+  if (versiculosParaBorrar.length > 0) {
+    const ids = versiculosParaBorrar.map((v) => v.id);
+    for (let i = 0; i < ids.length; i += 900) {
+      await db.delete(versiculosTokens).where(inArray(versiculosTokens.versiculoId, ids.slice(i, i + 900)));
+    }
+  }
 
   // Delete existing verses and recurso_libros for this recurso before re-import
   await db.delete(versiculos).where(eq(versiculos.recursoId, recurso.id));

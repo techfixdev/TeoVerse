@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { unzipSync, strFromU8 } from 'fflate';
 import { db } from '../src/db/client';
 import { SPAPDDPT_BOOKS, SPAPDDPT_SOURCE } from '../src/importers/spapddpt-manifest';
@@ -43,6 +43,21 @@ export async function importSpapddpt() {
       fuente: SPAPDDPT_SOURCE.source,
     })
     .where(eq(recursos.id, recurso.id));
+
+  // Borrar tokens huérfanos antes de borrar versículos (ON DELETE CASCADE no es fiable
+  // en SQLite sin PRAGMA foreign_keys = ON, que es el valor por defecto).
+  const versiculosParaBorrar = await db
+    .select({ id: versiculos.id })
+    .from(versiculos)
+    .where(eq(versiculos.recursoId, recurso.id));
+
+  if (versiculosParaBorrar.length > 0) {
+    const ids = versiculosParaBorrar.map((v) => v.id);
+    // Borrar en lotes para no superar los límites de SQLite (999 parámetros por consulta)
+    for (let i = 0; i < ids.length; i += 900) {
+      await db.delete(versiculosTokens).where(inArray(versiculosTokens.versiculoId, ids.slice(i, i + 900)));
+    }
+  }
 
   // Delete existing verses for this recurso before re-import
   await db.delete(versiculos).where(eq(versiculos.recursoId, recurso.id));
