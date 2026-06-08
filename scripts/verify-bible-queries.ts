@@ -272,6 +272,96 @@ async function verifyBibleQueries() {
   if (sparv1909Nav.next?.href !== '/biblia/spaRV1909/genesis/2/') {
     throw new Error(`Expected spaRV1909 Genesis 1 next link to target Genesis 2, got ${sparv1909Nav.next?.href ?? 'null'}.`);
   }
+
+  // --- ntv assertions ---
+  const ntvGenesisPath = paths.find(
+    (path) => path.version === 'ntv' && path.libro === 'genesis' && path.capitulo === '1',
+  );
+
+  if (!ntvGenesisPath) {
+    throw new Error('Expected static paths to include /biblia/ntv/genesis/1.');
+  }
+
+  const ntvGenesis = await getChapter({ version: 'ntv', libro: 'genesis', capitulo: 1 });
+
+  if (!ntvGenesis) {
+    throw new Error('Expected getChapter to return Genesis 1 for ntv.');
+  }
+
+  if (ntvGenesis.biblia.slug !== 'ntv') {
+    throw new Error(`Expected Biblia slug ntv, got ${ntvGenesis.biblia.slug}.`);
+  }
+
+  if (ntvGenesis.versiculos.length < 30) {
+    throw new Error(`Expected ntv Genesis 1 to include at least 30 verses, got ${ntvGenesis.versiculos.length}.`);
+  }
+
+  const ntvLibrary = library.find((version) => version.slug === 'ntv');
+
+  if (!ntvLibrary) {
+    throw new Error('Expected listBibleLibrary to include ntv.');
+  }
+
+  if (ntvLibrary.books.length !== 66) {
+    throw new Error(`Expected ntv library to include 66 books, got ${ntvLibrary.books.length}.`);
+  }
+
+  if (!ntvLibrary.books.find((book) => book.slug === 'genesis')) {
+    throw new Error('Expected ntv library to include genesis.');
+  }
+
+  const ntvNav = await getChapterNavigation({ version: 'ntv', libro: 'genesis', capitulo: 1 });
+
+  if (!ntvNav) {
+    throw new Error('Expected getChapterNavigation to return navigation for ntv Genesis 1.');
+  }
+
+  if (ntvNav.previous !== null) {
+    throw new Error('Expected ntv Genesis 1 to have no previous chapter navigation link.');
+  }
+
+  if (ntvNav.next?.href !== '/biblia/ntv/genesis/2/') {
+    throw new Error(`Expected ntv Genesis 1 next link to target Genesis 2, got ${ntvNav.next?.href ?? 'null'}.`);
+  }
+
+  const ntvJohnThree = await getChapter({ version: 'ntv', libro: 'juan', capitulo: 3 });
+
+  if (!ntvJohnThree) {
+    throw new Error('Expected getChapter to return Juan 3 for ntv.');
+  }
+
+  const ntvJohnThreeSixteen = ntvJohnThree.versiculos.find((verse) => verse.numero === 16);
+
+  if (!ntvJohnThreeSixteen?.texto) {
+    throw new Error('Expected Juan 3:16 to exist in imported ntv data.');
+  }
+
+  if (!/Dios/i.test(ntvJohnThreeSixteen.texto)) {
+    throw new Error(`Expected ntv Juan 3:16 text to mention Dios, got: ${ntvJohnThreeSixteen.texto}`);
+  }
+
+  // Verify zero asterisk characters in NTV texto fields
+  const ntvAsteriskCount = ntvGenesis.versiculos.filter((v) => v.texto.includes('*')).length;
+  if (ntvAsteriskCount > 0) {
+    throw new Error(`Expected zero asterisk characters in ntv Genesis 1 texto fields, found ${ntvAsteriskCount} verses with asterisks.`);
+  }
+
+  // Verify total NTV verse count equals 31,080
+  let ntvTotalVerses = 0;
+  for (const book of ntvLibrary.books) {
+    for (const chapterLink of book.chapters) {
+      const chapter = await getChapter({ version: 'ntv', libro: book.slug, capitulo: chapterLink.capitulo });
+      if (chapter) {
+        ntvTotalVerses += chapter.versiculos.length;
+      }
+    }
+  }
+
+  if (ntvTotalVerses !== 31_080) {
+    throw new Error(`Expected ntv total verse count to equal 31,080, got ${ntvTotalVerses}.`);
+  }
+
+  console.info(`  NTV: ${ntvLibrary.books.length} books, ${ntvTotalVerses} total verses.`);
 }
 
 verifyBibleQueries().catch((error) => {
