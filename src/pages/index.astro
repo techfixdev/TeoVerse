@@ -6,7 +6,10 @@ import { getDailyReadings, listBibliaVersions } from '@/db/queries';
 const hoy = new Date();
 const nombreMes = hoy.toLocaleDateString('es-ES', { month: 'long' });
 const diaNum = hoy.getDate();
-const readings = await getDailyReadings(); // spapddpt baseline — no-JS fallback
+// Fallback sin-JS: getDailyReadings() usa new Date() del servidor (fecha del build).
+// El island del cliente sobreescribe este contenido con la fecha local del usuario.
+// No cambiar esto a SSR — es intencional para el fallback estático.
+const readings = await getDailyReadings();
 const bibliaVersions = await listBibliaVersions(); // DB-driven pills, no hardcoded slugs
 
 const tituloDia = `${diaNum} de ${nombreMes}`;
@@ -310,6 +313,7 @@ const tituloDia = `${diaNum} de ${nombreMes}`;
 
     interface DailyReadingsResponse {
       version: string;
+      fecha: string;
       readings: DailyReadingEntry[];
     }
 
@@ -374,37 +378,41 @@ const tituloDia = `${diaNum} de ${nombreMes}`;
           savedVersion = stored.version;
         }
       } catch {
-        // localStorage unavailable — spapddpt baseline is already rendered
+        // localStorage no disponible — el baseline spapddpt ya está renderizado, no hacer nada
         return;
       }
-
-      // If user's version matches the baseline, nothing to do — zero flash
-      if (savedVersion === DEFAULT_VERSION) return;
 
       const container = document.querySelector<HTMLElement>('[data-daily-readings]');
       const skeleton = document.querySelector<HTMLElement>('[data-daily-readings-skeleton]');
       const content = document.querySelector<HTMLElement>('[data-daily-readings-content]');
       if (!container || !skeleton || !content) return;
 
-      // Get the date label that was rendered server-side
-      const dateLabel = content.querySelector<HTMLElement>('p.text-xs')?.textContent?.split('—')[1]?.trim()
-        ?? new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+      // Calcular la fecha LOCAL del cliente para evitar que el reading quede congelado
+      // al día del build (el SSG calcula new Date() en el servidor, no en el cliente).
+      const now = new Date();
+      const mes = now.getMonth() + 1;
+      const dia = now.getDate();
 
-      // Show skeleton, hide baseline content
+      // Mostrar skeleton mientras se espera la respuesta del endpoint
       skeleton.classList.remove('hidden');
       content.classList.add('hidden');
 
       try {
-        const response = await fetch(`/datos/lectura-diaria.json?version=${encodeURIComponent(savedVersion)}`);
+        const response = await fetch(
+          `/datos/lectura-diaria.json?version=${encodeURIComponent(savedVersion)}&mes=${mes}&dia=${dia}`
+        );
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = (await response.json()) as DailyReadingsResponse;
 
-        // Swap content
+        // Usar la etiqueta de fecha que devuelve el endpoint (calculada con la fecha del cliente)
+        const dateLabel = data.fecha ?? new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+
+        // Reemplazar contenido con la lectura del día correcto
         content.innerHTML = buildReadingsHTML(data.readings, dateLabel);
         content.classList.remove('hidden');
       } catch (err) {
-        console.error('DailyReadingsIsland: fetch failed, showing spapddpt baseline', err);
-        // Restore spapddpt baseline on any error (DRV-4 graceful degradation)
+        console.error('DailyReadingsIsland: fetch fallido, mostrando baseline spapddpt', err);
+        // Degradación graceful: si falla el fetch, se mantiene el baseline SSG visible (DRV-4)
         content.classList.remove('hidden');
       } finally {
         skeleton.classList.add('hidden');
