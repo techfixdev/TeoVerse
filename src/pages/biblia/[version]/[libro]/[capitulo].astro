@@ -139,12 +139,14 @@ for (const run of verseRuns) {
           Anterior: {navigation.previous.label}
         </a>
       ) : (
-        <span
-          class="rounded-brand border border-brand-grisSuave/40 px-4 py-2 text-sm font-semibold text-brand-grisSuave"
-          aria-disabled="true"
+        /* button[disabled] propaga el estado a AT de forma nativa; span[aria-disabled] no */
+        <button
+          type="button"
+          disabled
+          class="rounded-brand border border-brand-grisSuave/40 px-4 py-2 text-sm font-semibold text-brand-grisSuave opacity-50 cursor-not-allowed"
         >
           Sin capítulo anterior
-        </span>
+        </button>
       )}
       {navigation.next ? (
         <a
@@ -155,12 +157,13 @@ for (const run of verseRuns) {
           Siguiente: {navigation.next.label}
         </a>
       ) : (
-        <span
-          class="rounded-brand border border-brand-grisSuave/40 px-4 py-2 text-sm font-semibold text-brand-grisSuave"
-          aria-disabled="true"
+        <button
+          type="button"
+          disabled
+          class="rounded-brand border border-brand-grisSuave/40 px-4 py-2 text-sm font-semibold text-brand-grisSuave opacity-50 cursor-not-allowed"
         >
           Sin capítulo siguiente
-        </span>
+        </button>
       )}
     </nav>
 

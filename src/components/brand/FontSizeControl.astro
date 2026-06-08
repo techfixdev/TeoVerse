@@ -63,23 +63,41 @@
     }
   }
 
+  function updateAriaDisabled(level: string): void {
+    const increaseBtn = document.querySelector<HTMLButtonElement>('[data-font-action="increase"]');
+    const decreaseBtn = document.querySelector<HTMLButtonElement>('[data-font-action="decrease"]');
+    const idx = LEVELS.indexOf(level as typeof LEVELS[number]);
+    const atMin = idx === 0;
+    const atMax = idx === LEVELS.length - 1;
+
+    if (decreaseBtn) {
+      decreaseBtn.setAttribute('aria-disabled', atMin ? 'true' : 'false');
+    }
+    if (increaseBtn) {
+      increaseBtn.setAttribute('aria-disabled', atMax ? 'true' : 'false');
+    }
+  }
+
   function setup(): void {
-    // Sync class on initial load (bootstrap may already have set it)
-    applyScaleClass($fontScale.get());
-
-    // Listen for store changes and sync class
-    $fontScale.subscribe((level) => {
-      applyScaleClass(level);
-    });
-
-    // Button click handlers
     const increaseBtn = document.querySelector<HTMLButtonElement>('[data-font-action="increase"]');
     const decreaseBtn = document.querySelector<HTMLButtonElement>('[data-font-action="decrease"]');
     const resetBtn = document.querySelector<HTMLButtonElement>('[data-font-action="reset"]');
 
+    // Sync class on initial load (bootstrap may already have set it) and set initial aria-disabled
+    const initialLevel = $fontScale.get();
+    applyScaleClass(initialLevel);
+    updateAriaDisabled(initialLevel);
+
+    // Listen for store changes and sync class + aria-disabled
+    $fontScale.subscribe((level) => {
+      applyScaleClass(level);
+      updateAriaDisabled(level);
+    });
+
     increaseBtn?.addEventListener('click', () => {
       const current = $fontScale.get();
       const idx = LEVELS.indexOf(current);
+      // No hacer nada si ya está en el máximo (aria-disabled="true" lo indica visualmente)
       if (idx < LEVELS.length - 1) {
         $fontScale.set(LEVELS[idx + 1]);
       }
@@ -88,6 +106,7 @@
     decreaseBtn?.addEventListener('click', () => {
       const current = $fontScale.get();
       const idx = LEVELS.indexOf(current);
+      // No hacer nada si ya está en el mínimo (aria-disabled="true" lo indica visualmente)
       if (idx > 0) {
         $fontScale.set(LEVELS[idx - 1]);
       }

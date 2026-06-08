@@ -65,9 +65,13 @@ const tituloDia = `${diaNum} de ${nombreMes}`;
           <p class="text-xs text-slate-500 dark:text-slate-400">Podés elegir más de una versión para buscar.</p>
         </form>
 
-        <div id="search-results-section" class="hidden mt-6" aria-live="polite">
-          <p id="search-status" class="text-sm text-slate-500 dark:text-slate-400"></p>
-          <ol id="search-results" class="mt-3 space-y-3"></ol>
+        {/* El nodo aria-live debe estar siempre en el DOM para que los lectores de pantalla
+            lo registren al cargar la página. display:none lo excluye del árbol de accesibilidad
+            y los anuncios no se emiten. La solución: el status vive en un nodo separado
+            siempre presente, y solo el contenedor visual de resultados se muestra/oculta. */}
+        <p id="search-status" class="mt-6 text-sm text-slate-500 dark:text-slate-400" aria-live="polite" aria-atomic="true"></p>
+        <div id="search-results-section" class="hidden mt-2">
+          <ol id="search-results" class="space-y-3"></ol>
         </div>
 
         {/* Daily readings — skeleton + client island (DRV-3, DRV-4) */}
@@ -152,6 +156,8 @@ const tituloDia = `${diaNum} de ${nombreMes}`;
 
     const form = document.getElementById('search-form') as HTMLFormElement | null;
     const input = document.getElementById('home-search') as HTMLInputElement | null;
+    // statusEl siempre está en el DOM (aria-live="polite") para que el lector de pantalla
+    // lo registre al cargar y anuncie los cambios de texto posteriores.
     const statusEl = document.getElementById('search-status');
     const resultsEl = document.getElementById('search-results');
     const resultsSection = document.getElementById('search-results-section');
@@ -169,8 +175,10 @@ const tituloDia = `${diaNum} de ${nombreMes}`;
 
       const q = query.trim();
       if (q.length < 2) {
+        // Limpiar estado y ocultar resultados visuales; el status queda vacío (no anuncia nada)
         resultsSection.classList.add('hidden');
         resultsEl.textContent = '';
+        statusEl.textContent = '';
         return;
       }
 
@@ -178,8 +186,8 @@ const tituloDia = `${diaNum} de ${nombreMes}`;
       const params = new URLSearchParams({ q, versiones });
       const url = `/buscar.json?${params.toString()}`;
 
+      // El aria-live anuncia "Buscando..." inmediatamente al lector de pantalla
       statusEl.textContent = 'Buscando...';
-      resultsSection.classList.remove('hidden');
 
       try {
         const response = await fetch(url);
@@ -188,10 +196,13 @@ const tituloDia = `${diaNum} de ${nombreMes}`;
         const data = await response.json();
         const results: SearchResult[] = data.results ?? [];
 
+        // El texto en statusEl es leído por el aria-live="polite" — siempre actualizarlo
         if (results.length === 0) {
           statusEl.textContent = `Sin resultados para "${q}".`;
+          resultsSection.classList.add('hidden');
         } else {
           statusEl.textContent = `${results.length} resultado${results.length === 1 ? '' : 's'} para "${q}":`;
+          resultsSection.classList.remove('hidden');
         }
 
         resultsEl.textContent = '';
@@ -214,6 +225,7 @@ const tituloDia = `${diaNum} de ${nombreMes}`;
       } catch (error) {
         console.error(error);
         statusEl.textContent = 'Error al buscar. Intentá de nuevo.';
+        resultsSection.classList.add('hidden');
       }
     }
 
