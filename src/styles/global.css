@@ -19,6 +19,14 @@
     /* Header height — single source of truth for scroll-margin and sticky offsets.
        5rem (80px) mobile; overridden at sm to 6rem (96px). */
     --header-h: 5rem;
+
+    /* Highlight color palette — light mode (soft pastels for legible text overlay) */
+    --hl-amarillo: #FEF3C7;
+    --hl-verde:    #D1FAE5;
+    --hl-rosa:     #FCE7F3;
+    --hl-azul:     #DBEAFE;
+    --hl-naranja:  #FED7AA;
+    --hl-violeta:  #EDE9FE;
   }
 
   @media (min-width: 640px) {
@@ -33,6 +41,14 @@
     color-scheme: dark;
     --brand-base: #0E1A1F;
     --brand-text: #E6F4F8;
+
+    /* Highlight color palette — dark mode (deep tones for legible text overlay) */
+    --hl-amarillo: #78350F;
+    --hl-verde:    #064E3B;
+    --hl-rosa:     #831843;
+    --hl-azul:     #1E3A5F;
+    --hl-naranja:  #7C2D12;
+    --hl-violeta:  #4C1D95;
   }
 
   /* -------------------------------------------------------------------------
@@ -550,6 +566,18 @@ html.ws-tsk-open .tsk-panel {
 .tsk-reference:focus-visible {
   outline: 2px solid var(--brand-cian-dark);
   outline-offset: 1px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Verse card — base structure for highlight interaction.
+ * Inactive by default: no padding, border, or shadow until card mode activates
+ * (html.verso-modo-activo). The ::before pseudo-element is the paint layer
+ * for the marker-paint animation (added in PR 2).
+ * --------------------------------------------------------------------------- */
+.verso-card {
+  position: relative;
+  z-index: 0;
+  border-radius: var(--radius-brand, 1.25rem);
 }
 
 /* ---------------------------------------------------------------------------
