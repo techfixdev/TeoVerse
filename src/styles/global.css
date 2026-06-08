@@ -572,12 +572,72 @@ html.ws-tsk-open .tsk-panel {
  * Verse card — base structure for highlight interaction.
  * Inactive by default: no padding, border, or shadow until card mode activates
  * (html.verso-modo-activo). The ::before pseudo-element is the paint layer
- * for the marker-paint animation (added in PR 2).
+ * for the marker-paint animation.
  * --------------------------------------------------------------------------- */
 .verso-card {
   position: relative;
   z-index: 0;
   border-radius: var(--radius-brand, 1.25rem);
+}
+
+/* Paint layer — sits behind card content (z-index: -1).
+   scaleX(0) by default; animated to scaleX(1) when highlighted.
+   GPU-composited: only transform animates (no layout/paint triggers). */
+.verso-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  transform-origin: left;
+  transform: scaleX(0);
+  background-color: var(--hl-active, transparent);
+  opacity: 0.5;
+}
+
+/* ---------------------------------------------------------------------------
+ * Marker-paint animation — scaleX wipe from left to right.
+ * Triggered when .verso-resaltado is added to a card.
+ * 0.3s ease-out, forwards (stays at scaleX(1) after animation ends).
+ * --------------------------------------------------------------------------- */
+@keyframes marker-paint {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+/* Animation trigger — plays the paint animation on first highlight.
+   The ::before pseudo-element scales from 0 to 1 on the X axis. */
+.verso-resaltado::before {
+  animation: marker-paint 0.3s ease-out forwards;
+}
+
+/* ---------------------------------------------------------------------------
+ * Highlight color classes — each sets --hl-active to the corresponding
+ * CSS custom property. The ::before pseudo-element reads --hl-active for
+ * its background-color.
+ * --------------------------------------------------------------------------- */
+.verso-resaltado--amarillo { --hl-active: var(--hl-amarillo); }
+.verso-resaltado--verde    { --hl-active: var(--hl-verde); }
+.verso-resaltado--rosa     { --hl-active: var(--hl-rosa); }
+.verso-resaltado--azul     { --hl-active: var(--hl-azul); }
+.verso-resaltado--naranja  { --hl-active: var(--hl-naranja); }
+.verso-resaltado--violeta  { --hl-active: var(--hl-violeta); }
+
+/* ---------------------------------------------------------------------------
+ * Active card mode — scoped under html.verso-modo-activo.
+ * Without the class, verses render as flat list items (zero visual change
+ * for users who never interact). Card mode activates on first verse tap
+ * (set by HighlightClickProxy in PR 3) and persists permanently.
+ * --------------------------------------------------------------------------- */
+html.verso-modo-activo .verso-card {
+  padding: 0.5rem 0.75rem;
+  border: 2px solid var(--brand-cian-claro);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.04);
+  background-color: var(--brand-base);
+}
+
+html.verso-modo-activo .verso-card:hover {
+  border-color: var(--brand-cian);
 }
 
 /* ---------------------------------------------------------------------------

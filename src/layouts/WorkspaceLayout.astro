@@ -33,10 +33,12 @@ import '@fontsource/caveat/500.css';
 import BrandLogo from '@/components/brand/BrandLogo.astro';
 import FontSizeControl from '@/components/brand/FontSizeControl.astro';
 import { fontBootstrapScript } from '@/components/brand/fontBootstrap';
-  import ReferenciaSeed from '@/components/workspace/ReferenciaSeed.astro';
-  import TskClickProxy from '@/components/workspace/TskClickProxy.astro';
-  import TskPanel from '@/components/modules/TskPanel.astro';
-  import { bootstrapScript } from '@/components/workspace/bootstrap';
+import ReferenciaSeed from '@/components/workspace/ReferenciaSeed.astro';
+import TskClickProxy from '@/components/workspace/TskClickProxy.astro';
+import TskPanel from '@/components/modules/TskPanel.astro';
+import { bootstrapScript } from '@/components/workspace/bootstrap';
+import HighlightClickProxy from '@/components/workspace/HighlightClickProxy.astro';
+import { highlightBootstrapScript } from '@/components/workspace/highlightBootstrap';
 
 interface Props {
   title?:       string;
@@ -83,6 +85,12 @@ const {
         Reads localStorage and applies font-scale-{level} class on <html>
         so CSS can scale text without FOUC. */}
     <script is:inline set:html={fontBootstrapScript} />
+
+    {/* Highlight bootstrap — runs after font-scale bootstrap.
+        Reads rv:card-mode and rv:highlights from localStorage, applies
+        verso-modo-activo class and verso-resaltado--{colorId} classes
+        to matching verse cards before first paint (prevents FOUC). */}
+    <script is:inline set:html={highlightBootstrapScript} />
   </head>
 
   <body class="font-brand min-h-screen antialiased bg-[color:var(--brand-base)] text-[color:var(--brand-text)]">
@@ -136,6 +144,10 @@ const {
     {/* ReferenciaSeed: reads data-* from <html> and seeds $referencia store.
         Its <script> runs on parse; no hydration directive needed (.astro). */}
     <ReferenciaSeed />
+
+    {/* HighlightClickProxy: delegated click listener on main.module-lectura.
+        Toggles verse highlight state on tap (coexists with Strong/TSK proxies). */}
+    <HighlightClickProxy />
 
   </body>
 </html>
