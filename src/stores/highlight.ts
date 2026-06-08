@@ -34,6 +34,7 @@ export const COLORS: readonly ColorId[] = [
 
 export const HIGHLIGHT_KEY = 'rv:highlights';
 export const ACTIVE_COLOR_KEY = 'rv:active-color';
+export const CARD_MODE_KEY = 'rv:card-mode';
 
 const defaultHighlight: HighlightMap = {};
 const defaultColor: ColorId = 'amarillo';

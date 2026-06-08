@@ -34,7 +34,8 @@
     "verify:usfm-interlinear": "tsx scripts/verify-usfm-interlinear.ts",
     "verify:tokens": "tsx scripts/verify-tokens-endpoint.ts",
     "verify:strong": "tsx scripts/verify-strong-endpoint.ts",
-    "verify:pr1-foundation": "tsx scripts/verify-pr1-foundation.ts"
+    "verify:pr1-foundation": "tsx scripts/verify-pr1-foundation.ts",
+    "verify:pr2-interaction": "tsx scripts/verify-pr2-interaction.ts"
   },
   "dependencies": {
     "@astrojs/tailwind": "^6.0.2",

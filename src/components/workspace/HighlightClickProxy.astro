@@ -1,0 +1,71 @@
+---
+/**
+ * HighlightClickProxy — event-delegation island for verse highlight toggling.
+ *
+ * Attaches ONE delegated click listener on the reading container
+ * (`<main class="module-lectura">`). When a `.verso-card` is clicked
+ * (and the target is NOT a Strong word or TSK marker), it toggles the
+ * highlight state in the `$highlight` store using the current `$colorActivo`.
+ *
+ * Coexistence with Strong/TSK proxies:
+ *   All three proxies register on `main.module-lectura` — same container,
+ *   same event phase. The bail-out check ensures Strong/TSK clicks never
+ *   trigger highlight toggling, even though the click bubbles through the <li>.
+ *
+ * The script runs on parse (inline <script> bundled by Astro).
+ * The listener is cleaned up on page unload to avoid leaks.
+ */
+---
+
+<script>
+  import { $highlight, $colorActivo } from '@/stores/highlight';
+  import type { HighlightMap } from '@/stores/highlight';
+
+  function attach() {
+    const container = document.querySelector<HTMLElement>('main.module-lectura');
+    if (!container) return;
+
+    function handleClick(event: MouseEvent) {
+      const el = event.target as HTMLElement;
+
+      // Yield to Strong and TSK proxies — they handle their own targets
+      if (el.closest('[data-strong]') || el.closest('[data-tsk-refs]')) return;
+
+      const card = el.closest('.verso-card') as HTMLElement | null;
+      if (!card) return;
+
+      const versoKey = card.dataset.verso;
+      if (!versoKey) return;
+
+      const currentColor = $colorActivo.get();
+      const currentMap = $highlight.get();
+      const existingColor = currentMap[versoKey];
+
+      // Toggle: if already highlighted, remove; otherwise apply current color
+      const next: HighlightMap = { ...currentMap };
+      if (existingColor) {
+        delete next[versoKey];
+        card.classList.remove('verso-resaltado', `verso-resaltado--${existingColor}`);
+      } else {
+        next[versoKey] = currentColor;
+        card.classList.add('verso-resaltado', `verso-resaltado--${currentColor}`);
+      }
+
+      $highlight.set(next);
+    }
+
+    container.addEventListener('click', handleClick);
+
+    // Cleanup on page navigation / unload
+    window.addEventListener('pagehide', () => {
+      container.removeEventListener('click', handleClick);
+    }, { once: true });
+  }
+
+  // Run after DOM is available
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', attach, { once: true });
+  } else {
+    attach();
+  }
+</script>
