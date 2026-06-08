@@ -1,5 +1,5 @@
 import { and, asc, between, eq, sql } from 'drizzle-orm';
-import { db } from './client';
+import { client, db } from './client';
 import { recursos, recursoLibros, libros, versiculos, versiculosTokens, diccionarioEntradas, tskReferencias, planLectura } from './schema';
 
 export type StaticChapterPath = {
@@ -503,6 +503,126 @@ export async function listBibleAttributions(): Promise<BibleAttribution[]> {
     .from(recursos)
     .where(eq(recursos.tipo, 'biblia'))
     .orderBy(asc(recursos.slug));
+}
+
+// ---------------------------------------------------------------------------
+// FTS5 Search (added by search-version-selection)
+// ---------------------------------------------------------------------------
+
+export type SearchResult = {
+  version: string;
+  versionNombre: string;
+  book: string;
+  chapter: number;
+  verse: number;
+  text: string;
+  href: string;
+};
+
+export type SearchResponse = {
+  results: SearchResult[];
+  error?: string;
+};
+
+/**
+ * Sanitize a raw user query for FTS5 MATCH syntax.
+ * - Lowercase
+ * - Split on whitespace
+ * - Strip embedded double-quotes
+ * - Wrap each term in "..." (neutralises all FTS5 operators)
+ * - Join with space (implicit AND — all terms must match)
+ */
+function sanitizeFtsQuery(raw: string): string {
+  return raw
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((term) => `"${term.replace(/"/g, '')}"`)
+    .join(' ');
+}
+
+/**
+ * searchVersiculos — FTS5-backed BM25 search over versiculos.
+ *
+ * Uses the external-content virtual table `versiculos_fts` (populated by
+ * build-fts.ts). bm25() returns negative values — ORDER BY score ASC puts
+ * the most relevant rows first.
+ *
+ * Short-query guard: returns [] immediately for queries < 3 chars (no DB call).
+ * Version filter: applies recurso_id IN (...) on the FTS virtual table.
+ * Limit: 60 results (spec FTS-5).
+ * Fallback: on any DB error, returns { results: [], error: 'search_unavailable' }.
+ */
+export async function searchVersiculos(q: string, versions: string[]): Promise<SearchResponse> {
+  if (q.trim().length < 3) {
+    return { results: [] };
+  }
+
+  const sanitized = sanitizeFtsQuery(q);
+
+  if (!sanitized) {
+    return { results: [] };
+  }
+
+  // Build IN clause placeholders
+  const placeholders = versions.map(() => '?').join(', ');
+
+  const sql = `
+    SELECT
+      v.id,
+      bm25(versiculos_fts) AS score,
+      v.texto,
+      v.capitulo,
+      v.versiculo,
+      l.nombre AS libro_nombre,
+      l.slug AS libro_slug,
+      r.slug AS version_slug,
+      r.nombre AS version_nombre
+    FROM versiculos_fts
+    JOIN versiculos v ON v.id = versiculos_fts.rowid
+    JOIN recursos r ON r.id = v.recurso_id
+    JOIN libros l ON l.id = v.libro_id
+    WHERE versiculos_fts MATCH ?
+      AND versiculos_fts.recurso_id IN (
+        SELECT id FROM recursos WHERE slug IN (${placeholders})
+      )
+    ORDER BY score ASC
+    LIMIT 60
+  `;
+
+  try {
+    const result = await client.execute({ sql, args: [sanitized, ...versions] });
+
+    const results: SearchResult[] = result.rows.map((row: any) => ({
+      version: row.version_slug as string,
+      versionNombre: row.version_nombre as string,
+      book: row.libro_nombre as string,
+      chapter: row.capitulo as number,
+      verse: row.versiculo as number,
+      text: row.texto as string,
+      href: `/biblia/${row.version_slug}/${row.libro_slug}/${row.capitulo}/#v${row.versiculo}`,
+    }));
+
+    return { results };
+  } catch (err) {
+    console.error('searchVersiculos error:', (err as Error).message);
+    return { results: [], error: 'search_unavailable' };
+  }
+}
+
+/**
+ * listBibliaVersions — returns available Bible versions from the DB.
+ * Replaces the hardcoded VERSIONES_DISPONIBLES array.
+ * Used for version validation in /buscar.json and for rendering pills.
+ */
+export async function listBibliaVersions(): Promise<{ slug: string; nombre: string }[]> {
+  const result = await client.execute(
+    `SELECT slug, nombre FROM recursos WHERE tipo = 'biblia' ORDER BY slug`,
+  );
+  return result.rows.map((row: any) => ({
+    slug: row.slug as string,
+    nombre: row.nombre as string,
+  }));
 }
 
 export async function listSearchDocuments(): Promise<SearchDocument[]> {
