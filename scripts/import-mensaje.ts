@@ -1,10 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { db } from '../src/db/client';
 import { MENSAJE_BOOKS, MENSAJE_SOURCE } from '../src/importers/mensaje-manifest';
-import { recursos, libros, recursoLibros, versiculos } from '../src/db/schema';
+import { recursos, libros, recursoLibros, versiculos, versiculosTokens } from '../src/db/schema';
 import { parseMensajeHtml } from '../src/importers/mensaje-html';
 
 const htmlPath = path.resolve('sources', MENSAJE_SOURCE.slug, MENSAJE_SOURCE.htmlFile);
@@ -51,7 +51,20 @@ export async function importMensaje() {
     })
     .where(eq(recursos.id, recurso.id));
 
-  // Reimport limpio: borra versículos y orden canónico previos de este recurso.
+  // Reimport limpio: borra tokens huérfanos, versículos y orden canónico previos de este recurso.
+  // ON DELETE CASCADE no es fiable en SQLite sin PRAGMA foreign_keys = ON (default: OFF).
+  const versiculosParaBorrar = await db
+    .select({ id: versiculos.id })
+    .from(versiculos)
+    .where(eq(versiculos.recursoId, recurso.id));
+
+  if (versiculosParaBorrar.length > 0) {
+    const ids = versiculosParaBorrar.map((v) => v.id);
+    for (let i = 0; i < ids.length; i += 900) {
+      await db.delete(versiculosTokens).where(inArray(versiculosTokens.versiculoId, ids.slice(i, i + 900)));
+    }
+  }
+
   await db.delete(versiculos).where(eq(versiculos.recursoId, recurso.id));
   await db.delete(recursoLibros).where(eq(recursoLibros.recursoId, recurso.id));
 

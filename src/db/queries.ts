@@ -53,14 +53,6 @@ export type BibleAttribution = {
   fuente: string;
 };
 
-export type SearchDocument = {
-  version: string;
-  book: string;
-  chapter: number;
-  verse: number;
-  text: string;
-  href: string;
-};
 
 export type ChapterNavigationLink = {
   version: string;
@@ -204,10 +196,12 @@ export async function getHomeChapter(): Promise<Chapter | null> {
   return getChapter({ version: 'spapddpt', libro: 'genesis', capitulo: 1 });
 }
 
-export async function getDailyReadings(): Promise<DailyReading[]> {
+export async function getDailyReadings(version: string = 'spapddpt', mes?: number, dia?: number): Promise<DailyReading[]> {
+  // Si no se proveen mes/dia, se calcula la fecha actual del servidor (fallback para SSG).
+  // El cliente debe pasar su propia fecha para evitar que el reading quede congelado al día del build.
   const now = new Date();
-  const mes = now.getMonth() + 1;
-  const dia = now.getDate();
+  const mesFinal = mes ?? now.getMonth() + 1;
+  const diaFinal = dia ?? now.getDate();
 
   const planEntries = await db
     .select({
@@ -219,7 +213,7 @@ export async function getDailyReadings(): Promise<DailyReading[]> {
     })
     .from(planLectura)
     .innerJoin(libros, eq(planLectura.libroId, libros.id))
-    .where(and(eq(planLectura.mes, mes), eq(planLectura.dia, dia)))
+    .where(and(eq(planLectura.mes, mesFinal), eq(planLectura.dia, diaFinal)))
     .orderBy(asc(planLectura.orden));
 
   if (planEntries.length === 0) return [];
@@ -247,7 +241,7 @@ export async function getDailyReadings(): Promise<DailyReading[]> {
       .where(
         and(
           eq(recursos.tipo, 'biblia'),
-          eq(recursos.slug, 'spapddpt'),
+          eq(recursos.slug, version),
           eq(libros.id, entry.libroId),
           between(versiculos.capitulo, entry.capituloInicio, capFin),
         ),
@@ -622,33 +616,6 @@ export async function listBibliaVersions(): Promise<{ slug: string; nombre: stri
   return result.rows.map((row: any) => ({
     slug: row.slug as string,
     nombre: row.nombre as string,
-  }));
-}
-
-export async function listSearchDocuments(): Promise<SearchDocument[]> {
-  const rows = await db
-    .select({
-      version: recursos.slug,
-      book: libros.nombre,
-      bookSlug: libros.slug,
-      chapter: versiculos.capitulo,
-      verse: versiculos.versiculo,
-      text: versiculos.texto,
-    })
-    .from(versiculos)
-    .innerJoin(recursos, eq(versiculos.recursoId, recursos.id))
-    .innerJoin(libros, eq(versiculos.libroId, libros.id))
-    .innerJoin(recursoLibros, and(eq(recursoLibros.recursoId, recursos.id), eq(recursoLibros.libroId, libros.id)))
-    .where(eq(recursos.tipo, 'biblia'))
-    .orderBy(asc(recursos.slug), asc(recursoLibros.orden), asc(versiculos.capitulo), asc(versiculos.versiculo));
-
-  return rows.map((row) => ({
-    version: row.version,
-    book: row.book,
-    chapter: row.chapter,
-    verse: row.verse,
-    text: row.text,
-    href: `/biblia/${row.version}/${row.bookSlug}/${row.chapter}/#v${row.verse}`,
   }));
 }
 

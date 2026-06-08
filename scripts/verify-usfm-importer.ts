@@ -1,6 +1,6 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '../src/db/client';
-import { recursos, libros, recursoLibros, versiculos } from '../src/db/schema';
+import { recursos, libros, recursoLibros, versiculos, versiculosTokens } from '../src/db/schema';
 import { importUsfmBook } from './import-usfm';
 
 const fixturePath = new URL('../fixtures/usfm/spapddpt-genesis-1.usfm', import.meta.url);
@@ -87,6 +87,22 @@ async function verifyUsfmImporter() {
       .where(eq(versiculos.recursoId, recurso.id));
 
     assertEqual(afterSecondImport.length, 5, 'Expected repeated fixture import to avoid duplicate verses.');
+
+    // Verificar que no quedan tokens huérfanos tras la re-importación.
+    // Un token huérfano es aquel cuyo versiculo_id no existe en la tabla versiculos.
+    // Si ON DELETE CASCADE no funcionara (PRAGMA foreign_keys OFF) y la limpieza explícita
+    // tampoco se aplicara, el segundo import dejaría tokens con IDs del primer import que
+    // ya no existen en versiculos.
+    // Se usa un LEFT JOIN en vez de NOT IN (...): con miles de versículos un NOT IN
+    // explotaría el límite de 999 parámetros de SQLite. El JOIN cuenta los tokens cuyo
+    // versiculo_id no tiene fila correspondiente en versiculos.
+    const orphans = await db
+      .select({ id: versiculosTokens.id })
+      .from(versiculosTokens)
+      .leftJoin(versiculos, eq(versiculosTokens.versiculoId, versiculos.id))
+      .where(isNull(versiculos.id));
+    const orphanCount = orphans.length;
+    assertEqual(orphanCount, 0, `Re-import should leave zero orphaned versiculos_tokens (found ${orphanCount}).`);
 
     // Assert recurso_libros row exists with the correct orden for this (recurso, libro) pair.
     const recursoLibroRow = await db

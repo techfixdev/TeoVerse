@@ -150,6 +150,39 @@ async function main() {
     }
   }
 
+  // --- FTS-3: BM25 relevance order (score ASC — lower = more relevant) ---
+  console.log('\nFTS-3: BM25 relevance ordering');
+  {
+    // Use a raw query to get the scores directly, asserting score is non-descending (ASC order)
+    try {
+      const result = await client.execute({
+        sql: `
+          SELECT bm25(versiculos_fts) AS score
+          FROM versiculos_fts
+          WHERE versiculos_fts MATCH ?
+            AND versiculos_fts.recurso_id IN (SELECT id FROM recursos WHERE slug = 'spapddpt')
+          ORDER BY score ASC
+          LIMIT 5
+        `,
+        args: ['"amor"'],
+      });
+
+      if (result.rows.length < 2) {
+        ok(`FTS-3: fewer than 2 results returned, ordering trivially satisfied`);
+      } else {
+        const scores = result.rows.map((r: any) => r.score as number);
+        const isAscending = scores.every((s, i) => i === 0 || s >= scores[i - 1]!);
+        if (isAscending) {
+          ok(`BM25 scores are non-descending (ORDER BY score ASC): [${scores.slice(0, 3).join(', ')}...]`);
+        } else {
+          fail('BM25 scores are NOT in ascending order (ORDER BY score ASC expected)', scores.join(', '));
+        }
+      }
+    } catch (err) {
+      fail('FTS-3 ordering assertion threw an error', (err as Error).message);
+    }
+  }
+
   // --- Summary ---
   console.log(`\n--- verify:search-fts results: ${passed} passed, ${failed} failed ---`);
 

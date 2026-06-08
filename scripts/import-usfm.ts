@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { db } from '../src/db/client';
 import { recursos, libros, recursoLibros, versiculos, versiculosTokens } from '../src/db/schema';
 import { parseUsfmBook, parseUsfmBookInterlinear } from '../src/importers/usfm';
@@ -73,6 +73,23 @@ export async function importUsfmBook(input: ImportUsfmBookInput): Promise<Import
   const libro =
     createdLibro ?? (await db.select().from(libros).where(eq(libros.slug, input.book.slug)).get());
   if (!libro) throw new Error(`Could not create or load book ${input.book.slug}.`);
+
+  // Borrar tokens huérfanos antes de borrar versículos para este (recurso, libro).
+  // Aunque schema.ts define ON DELETE CASCADE, SQLite lo ignora si PRAGMA foreign_keys
+  // está OFF (el valor por defecto). Esta limpieza explícita es la garantía robusta.
+  const versiculosParaBorrar = await db
+    .select({ id: versiculos.id })
+    .from(versiculos)
+    .where(and(eq(versiculos.recursoId, recurso.id), eq(versiculos.libroId, libro.id)));
+
+  if (versiculosParaBorrar.length > 0) {
+    const ids = versiculosParaBorrar.map((v) => v.id);
+    // Chunk the delete: un libro grande (p. ej. Salmos ~2.461 versículos) supera el
+    // límite de 999 parámetros de SQLite en una sola cláusula IN.
+    for (const idChunk of chunkArray(ids, 900)) {
+      await db.delete(versiculosTokens).where(inArray(versiculosTokens.versiculoId, idChunk));
+    }
+  }
 
   // Delete existing data for this (recurso, libro) pair before re-inserting — ensures
   // a re-import fully replaces both verse text and canon order (idempotent).

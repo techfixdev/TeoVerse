@@ -1,12 +1,16 @@
 ---
 import MainLayout from '@/layouts/MainLayout.astro';
 import BibleSelector from '@/components/modules/BibleSelector.astro';
-import { getDailyReadings } from '@/db/queries';
+import { getDailyReadings, listBibliaVersions } from '@/db/queries';
 
 const hoy = new Date();
 const nombreMes = hoy.toLocaleDateString('es-ES', { month: 'long' });
 const diaNum = hoy.getDate();
+// Fallback sin-JS: getDailyReadings() usa new Date() del servidor (fecha del build).
+// El island del cliente sobreescribe este contenido con la fecha local del usuario.
+// No cambiar esto a SSR — es intencional para el fallback estático.
 const readings = await getDailyReadings();
+const bibliaVersions = await listBibliaVersions(); // DB-driven pills, no hardcoded slugs
 
 const tituloDia = `${diaNum} de ${nombreMes}`;
 ---
@@ -51,61 +55,90 @@ const tituloDia = `${diaNum} de ${nombreMes}`;
 
           <fieldset id="version-filters" class="flex flex-wrap gap-2">
             <legend class="sr-only">Versiones a incluir en la búsqueda</legend>
-            <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium transition has-checked:border-brand-cianDark has-checked:bg-brand-cianDark has-checked:text-white dark:border-slate-700 dark:has-checked:border-brand-cianClaro dark:has-checked:bg-brand-cianClaro dark:has-checked:text-slate-950">
-              <input type="checkbox" name="version" value="spapddpt" checked class="sr-only" /> PDPT
-            </label>
-            <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium transition has-checked:border-brand-cianDark has-checked:bg-brand-cianDark has-checked:text-white dark:border-slate-700 dark:has-checked:border-brand-cianClaro dark:has-checked:bg-brand-cianClaro dark:has-checked:text-slate-950">
-              <input type="checkbox" name="version" value="sparvg" class="sr-only" /> RVG
-            </label>
-            <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium transition has-checked:border-brand-cianDark has-checked:bg-brand-cianDark has-checked:text-white dark:border-slate-700 dark:has-checked:border-brand-cianClaro dark:has-checked:bg-brand-cianClaro dark:has-checked:text-slate-950">
-              <input type="checkbox" name="version" value="spaRV1909" class="sr-only" /> RVR1909
-            </label>
-            <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium transition has-checked:border-brand-cianDark has-checked:bg-brand-cianDark has-checked:text-white dark:border-slate-700 dark:has-checked:border-brand-cianClaro dark:has-checked:bg-brand-cianClaro dark:has-checked:text-slate-950">
-              <input type="checkbox" name="version" value="mensaje" class="sr-only" /> MSG
-            </label>
+            {bibliaVersions.map((v) => (
+              <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium transition has-checked:border-brand-cianDark has-checked:bg-brand-cianDark has-checked:text-white dark:border-slate-700 dark:has-checked:border-brand-cianClaro dark:has-checked:bg-brand-cianClaro dark:has-checked:text-slate-950">
+                <input type="checkbox" name="version" value={v.slug} class="sr-only" />
+                {v.nombre}
+              </label>
+            ))}
           </fieldset>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Podés elegir más de una versión para buscar.</p>
         </form>
 
-        <div id="search-results-section" class="hidden mt-6" aria-live="polite">
-          <p id="search-status" class="text-sm text-slate-500 dark:text-slate-400"></p>
-          <ol id="search-results" class="mt-3 space-y-3"></ol>
+        {/* El nodo aria-live debe estar siempre en el DOM para que los lectores de pantalla
+            lo registren al cargar la página. display:none lo excluye del árbol de accesibilidad
+            y los anuncios no se emiten. La solución: el status vive en un nodo separado
+            siempre presente, y solo el contenedor visual de resultados se muestra/oculta. */}
+        <p id="search-status" class="mt-6 text-sm text-slate-500 dark:text-slate-400" aria-live="polite" aria-atomic="true"></p>
+        <div id="search-results-section" class="hidden mt-2">
+          <ol id="search-results" class="space-y-3"></ol>
         </div>
 
-        {
-          readings.length === 0 ? (
-            <p class="mt-10 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-              No hay lectura programada para hoy ({tituloDia}). Revisá el plan de lectura o elegí un libro manualmente.
-            </p>
-          ) : (
-            readings.map((reading, idx) => {
-              const rango = reading.capituloInicio === reading.capituloFin
-                ? `${reading.capituloInicio}`
-                : `${reading.capituloInicio}-${reading.capituloFin}`;
-              return (
-                <section class="mt-10 rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950/60" aria-label={`Lectura diaria: ${reading.libro.nombre} ${rango}`}>
-                  <div class="flex flex-col gap-1 border-b border-slate-200 pb-4 dark:border-slate-800 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                      <p class="text-xs font-semibold uppercase tracking-[0.2em] text-brand-cianDark dark:text-brand-cianClaro">
-                        {idx === 0 ? `Lectura diaria — ${tituloDia}` : 'También hoy'}
-                      </p>
-                      <h2 class="mt-1 text-2xl font-bold">{reading.libro.nombre} {rango}</h2>
+        {/* Daily readings — skeleton + client island (DRV-3, DRV-4) */}
+        {/* The client island checks $selector.version and swaps to the user's version if needed. */}
+        {/* The spapddpt baseline here serves as the no-JS fallback (DRV-4). */}
+        <div data-daily-readings class="min-h-[20rem]">
+          {/* Skeleton — shown while client fetch is in-flight (hidden by default, toggled by island) */}
+          <div
+            data-daily-readings-skeleton
+            class="hidden mt-10 space-y-4"
+            aria-hidden="true"
+          >
+            <div class="rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950/60">
+              <div class="animate-pulse space-y-3">
+                <div class="h-3 w-24 rounded bg-slate-200 dark:bg-slate-700"></div>
+                <div class="h-6 w-48 rounded bg-slate-200 dark:bg-slate-700"></div>
+                <div class="mt-4 space-y-3">
+                  {Array.from({ length: 5 }).map(() => (
+                    <div class="grid grid-cols-[2rem_1fr] gap-3">
+                      <div class="mt-1 h-4 w-5 rounded bg-slate-200 dark:bg-slate-700"></div>
+                      <div class="h-4 rounded bg-slate-200 dark:bg-slate-700"></div>
                     </div>
-                    <p class="text-sm text-slate-500 dark:text-slate-400">{reading.biblia.nombre}</p>
-                  </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
 
-                  <ol class="mt-5 space-y-4 font-reading text-lg leading-8 text-slate-800 dark:text-slate-200">
-                    {reading.versiculos.slice(0, 8).map((versiculo) => (
-                      <li class="grid grid-cols-[2rem_1fr] gap-3">
-                        <span class="pt-1 text-sm font-bold text-brand-cianDark dark:text-brand-cianClaro">{versiculo.numero}</span>
-                        <span>{versiculo.texto}</span>
-                      </li>
-                    ))}
-                  </ol>
-                </section>
-              );
-            })
-          )
-        }
+          {/* spapddpt baseline content — the no-JS fallback and starting state */}
+          <div data-daily-readings-content>
+            {
+              readings.length === 0 ? (
+                <p class="mt-10 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                  No hay lectura programada para hoy ({tituloDia}). Revisá el plan de lectura o elegí un libro manualmente.
+                </p>
+              ) : (
+                readings.map((reading, idx) => {
+                  const rango = reading.capituloInicio === reading.capituloFin
+                    ? `${reading.capituloInicio}`
+                    : `${reading.capituloInicio}-${reading.capituloFin}`;
+                  return (
+                    <section class="mt-10 rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950/60" aria-label={`Lectura diaria: ${reading.libro.nombre} ${rango}`}>
+                      <div class="flex flex-col gap-1 border-b border-slate-200 pb-4 dark:border-slate-800 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                          <p class="text-xs font-semibold uppercase tracking-[0.2em] text-brand-cianDark dark:text-brand-cianClaro">
+                            {idx === 0 ? `Lectura diaria — ${tituloDia}` : 'También hoy'}
+                          </p>
+                          <h2 class="mt-1 text-2xl font-bold">{reading.libro.nombre} {rango}</h2>
+                        </div>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">{reading.biblia.nombre}</p>
+                      </div>
+
+                      <ol class="mt-5 space-y-4 font-reading text-lg leading-8 text-slate-800 dark:text-slate-200">
+                        {reading.versiculos.slice(0, 8).map((versiculo) => (
+                          <li class="grid grid-cols-[2rem_1fr] gap-3">
+                            <span class="pt-1 text-sm font-bold text-brand-cianDark dark:text-brand-cianClaro">{versiculo.numero}</span>
+                            <span>{versiculo.texto}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </section>
+                  );
+                })
+              )
+            }
+          </div>
+        </div>
       </article>
     </section>
   </main>
@@ -123,6 +156,8 @@ const tituloDia = `${diaNum} de ${nombreMes}`;
 
     const form = document.getElementById('search-form') as HTMLFormElement | null;
     const input = document.getElementById('home-search') as HTMLInputElement | null;
+    // statusEl siempre está en el DOM (aria-live="polite") para que el lector de pantalla
+    // lo registre al cargar y anuncie los cambios de texto posteriores.
     const statusEl = document.getElementById('search-status');
     const resultsEl = document.getElementById('search-results');
     const resultsSection = document.getElementById('search-results-section');
@@ -140,8 +175,10 @@ const tituloDia = `${diaNum} de ${nombreMes}`;
 
       const q = query.trim();
       if (q.length < 2) {
+        // Limpiar estado y ocultar resultados visuales; el status queda vacío (no anuncia nada)
         resultsSection.classList.add('hidden');
         resultsEl.textContent = '';
+        statusEl.textContent = '';
         return;
       }
 
@@ -149,8 +186,8 @@ const tituloDia = `${diaNum} de ${nombreMes}`;
       const params = new URLSearchParams({ q, versiones });
       const url = `/buscar.json?${params.toString()}`;
 
+      // El aria-live anuncia "Buscando..." inmediatamente al lector de pantalla
       statusEl.textContent = 'Buscando...';
-      resultsSection.classList.remove('hidden');
 
       try {
         const response = await fetch(url);
@@ -159,10 +196,13 @@ const tituloDia = `${diaNum} de ${nombreMes}`;
         const data = await response.json();
         const results: SearchResult[] = data.results ?? [];
 
+        // El texto en statusEl es leído por el aria-live="polite" — siempre actualizarlo
         if (results.length === 0) {
           statusEl.textContent = `Sin resultados para "${q}".`;
+          resultsSection.classList.add('hidden');
         } else {
           statusEl.textContent = `${results.length} resultado${results.length === 1 ? '' : 's'} para "${q}":`;
+          resultsSection.classList.remove('hidden');
         }
 
         resultsEl.textContent = '';
@@ -185,6 +225,7 @@ const tituloDia = `${diaNum} de ${nombreMes}`;
       } catch (error) {
         console.error(error);
         statusEl.textContent = 'Error al buscar. Intentá de nuevo.';
+        resultsSection.classList.add('hidden');
       }
     }
 
@@ -218,6 +259,182 @@ const tituloDia = `${diaNum} de ${nombreMes}`;
         input.value = q;
         doSearch(q);
       }
+    }
+  </script>
+
+  {/* T-8.3: Version pills pre-check island */}
+  {/* Reads $selector.version and checks the matching pill. */}
+  {/* MUST NOT write to $selector.version — search-session scoped only. */}
+  <script>
+    import { $selector } from '@/stores/selector';
+
+    function initPillsPrecheck() {
+      const DEFAULT_VERSION = 'spapddpt';
+      let savedVersion: string = DEFAULT_VERSION;
+      try {
+        const stored = $selector.get();
+        if (stored && typeof stored.version === 'string' && stored.version.length > 0) {
+          savedVersion = stored.version;
+        }
+      } catch {
+        // localStorage unavailable — fall back to default
+      }
+
+      const checkboxes = document.querySelectorAll<HTMLInputElement>('#version-filters input[name="version"]');
+      let matched = false;
+      for (const cb of checkboxes) {
+        if (cb.value === savedVersion) {
+          cb.checked = true;
+          matched = true;
+        } else {
+          cb.checked = false;
+        }
+      }
+      // If the saved version wasn't found in the pill list, fall back to spapddpt
+      if (!matched) {
+        const fallback = document.querySelector<HTMLInputElement>(`#version-filters input[value="${DEFAULT_VERSION}"]`);
+        if (fallback) fallback.checked = true;
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initPillsPrecheck, { once: true });
+    } else {
+      initPillsPrecheck();
+    }
+  </script>
+
+  {/* T-7.3: Daily readings client island */}
+  {/* Reads $selector.version; if different from 'spapddpt', shows skeleton and */}
+  {/* fetches /datos/lectura-diaria.json?version=X, then swaps content in place. */}
+  <script>
+    import { $selector } from '@/stores/selector';
+
+    interface DailyVersiculo {
+      numero: number;
+      texto: string;
+    }
+
+    interface DailyReadingEntry {
+      biblia: { slug: string; nombre: string; licencia: string; fuente: string };
+      libro: { slug: string; nombre: string };
+      capituloInicio: number;
+      capituloFin: number;
+      versiculos: DailyVersiculo[];
+    }
+
+    interface DailyReadingsResponse {
+      version: string;
+      fecha: string;
+      readings: DailyReadingEntry[];
+    }
+
+    function buildReadingsHTML(readings: DailyReadingEntry[], tituloDia: string): string {
+      if (readings.length === 0) {
+        return `<p class="mt-10 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+          No hay lectura programada para hoy (${tituloDia}). Revisá el plan de lectura o elegí un libro manualmente.
+        </p>`;
+      }
+
+      return readings
+        .map((reading, idx) => {
+          const rango =
+            reading.capituloInicio === reading.capituloFin
+              ? `${reading.capituloInicio}`
+              : `${reading.capituloInicio}-${reading.capituloFin}`;
+
+          const versiculosHTML = reading.versiculos
+            .slice(0, 8)
+            .map(
+              (v) =>
+                `<li class="grid grid-cols-[2rem_1fr] gap-3">
+                  <span class="pt-1 text-sm font-bold text-brand-cianDark dark:text-brand-cianClaro">${v.numero}</span>
+                  <span>${escapeHtml(v.texto)}</span>
+                </li>`,
+            )
+            .join('');
+
+          const label = idx === 0 ? `Lectura diaria — ${tituloDia}` : 'También hoy';
+
+          return `<section class="mt-10 rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950/60" aria-label="Lectura diaria: ${escapeHtml(reading.libro.nombre)} ${rango}">
+            <div class="flex flex-col gap-1 border-b border-slate-200 pb-4 dark:border-slate-800 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-brand-cianDark dark:text-brand-cianClaro">${label}</p>
+                <h2 class="mt-1 text-2xl font-bold">${escapeHtml(reading.libro.nombre)} ${rango}</h2>
+              </div>
+              <p class="text-sm text-slate-500 dark:text-slate-400">${escapeHtml(reading.biblia.nombre)}</p>
+            </div>
+            <ol class="mt-5 space-y-4 font-reading text-lg leading-8 text-slate-800 dark:text-slate-200">
+              ${versiculosHTML}
+            </ol>
+          </section>`;
+        })
+        .join('');
+    }
+
+    function escapeHtml(str: string): string {
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    async function initDailyReadingsIsland() {
+      const DEFAULT_VERSION = 'spapddpt';
+      let savedVersion: string = DEFAULT_VERSION;
+      try {
+        const stored = $selector.get();
+        if (stored && typeof stored.version === 'string' && stored.version.length > 0) {
+          savedVersion = stored.version;
+        }
+      } catch {
+        // localStorage no disponible — el baseline spapddpt ya está renderizado, no hacer nada
+        return;
+      }
+
+      const container = document.querySelector<HTMLElement>('[data-daily-readings]');
+      const skeleton = document.querySelector<HTMLElement>('[data-daily-readings-skeleton]');
+      const content = document.querySelector<HTMLElement>('[data-daily-readings-content]');
+      if (!container || !skeleton || !content) return;
+
+      // Calcular la fecha LOCAL del cliente para evitar que el reading quede congelado
+      // al día del build (el SSG calcula new Date() en el servidor, no en el cliente).
+      const now = new Date();
+      const mes = now.getMonth() + 1;
+      const dia = now.getDate();
+
+      // Mostrar skeleton mientras se espera la respuesta del endpoint
+      skeleton.classList.remove('hidden');
+      content.classList.add('hidden');
+
+      try {
+        const response = await fetch(
+          `/datos/lectura-diaria.json?version=${encodeURIComponent(savedVersion)}&mes=${mes}&dia=${dia}`
+        );
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = (await response.json()) as DailyReadingsResponse;
+
+        // Usar la etiqueta de fecha que devuelve el endpoint (calculada con la fecha del cliente)
+        const dateLabel = data.fecha ?? new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+
+        // Reemplazar contenido con la lectura del día correcto
+        content.innerHTML = buildReadingsHTML(data.readings, dateLabel);
+        content.classList.remove('hidden');
+      } catch (err) {
+        console.error('DailyReadingsIsland: fetch fallido, mostrando baseline spapddpt', err);
+        // Degradación graceful: si falla el fetch, se mantiene el baseline SSG visible (DRV-4)
+        content.classList.remove('hidden');
+      } finally {
+        skeleton.classList.add('hidden');
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initDailyReadingsIsland, { once: true });
+    } else {
+      initDailyReadingsIsland();
     }
   </script>
 </MainLayout>
