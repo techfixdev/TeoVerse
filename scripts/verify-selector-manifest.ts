@@ -49,8 +49,8 @@ const CANONICAL_CHAPTER_COUNTS: Record<string, number> = {
 };
 
 const CANONICAL_VERSION_SLUGS = ['spapddpt', 'sparvg', 'spaRV1909', 'mensaje', 'ntv'] as const;
-const EXPECTED_TOTAL_CHAPTERS = CANONICAL_VERSION_SLUGS.length *
-  Object.values(CANONICAL_CHAPTER_COUNTS).reduce((sum, count) => sum + count, 0);
+const OPTIONAL_VERSION_SLUGS = new Set(['ntv']); // versions that may be absent if source data is not available
+const CHAPTERS_PER_VERSION = Object.values(CANONICAL_CHAPTER_COUNTS).reduce((sum, count) => sum + count, 0);
 const MAX_GZIPPED_BYTES = 80 * 1024;
 const MANIFEST_DIST_PATH = join(process.cwd(), 'dist', 'datos', 'biblioteca.json');
 
@@ -80,18 +80,26 @@ async function verifySelectorManifest(): Promise<void> {
   // 1. listSelectorManifest returns and is well-shaped.
   const manifest = await listSelectorManifest();
 
-  // 2. Exactly 4 versions, slugs match the canonical set (order independent).
+  // 2. Determine expected versions: canonical minus optional ones not present in DB.
+  const actualSlugs = manifest.versions.map((v) => v.slug).sort();
+  const expectedSlugs = [...CANONICAL_VERSION_SLUGS].filter(
+    (s) => !OPTIONAL_VERSION_SLUGS.has(s) || actualSlugs.includes(s),
+  ).sort();
+
   assert(
-    manifest.versions.length === CANONICAL_VERSION_SLUGS.length,
-    `Expected ${CANONICAL_VERSION_SLUGS.length} versions in selector manifest, got ${manifest.versions.length}.`,
+    manifest.versions.length === expectedSlugs.length,
+    `Expected ${expectedSlugs.length} versions in selector manifest, got ${manifest.versions.length}.`,
   );
 
-  const actualSlugs = manifest.versions.map((v) => v.slug).sort();
-  const expectedSlugs = [...CANONICAL_VERSION_SLUGS].sort();
   assert(
     arrEq(actualSlugs, expectedSlugs),
     `Expected version slugs ${expectedSlugs.join(',')}, got ${actualSlugs.join(',')}.`,
   );
+
+  if (actualSlugs.length < CANONICAL_VERSION_SLUGS.length) {
+    const missing = CANONICAL_VERSION_SLUGS.filter((s) => !actualSlugs.includes(s));
+    console.warn(`  Optional versions not present: ${missing.join(', ')} (source data unavailable).`);
+  }
 
   // 3. Every version exposes 66 books in canonical order, every book has
   //    abreviatura populated and capitulos == [1..CANONICAL_CHAPTER_COUNTS[slug]].
@@ -134,10 +142,11 @@ async function verifySelectorManifest(): Promise<void> {
     }
   }
 
-  // 4. Total chapter count across all versions matches the canonical sum.
+  // 4. Total chapter count across all versions matches the expected sum.
+  const expectedTotalChapters = expectedSlugs.length * CHAPTERS_PER_VERSION;
   assert(
-    totalCapitulos === EXPECTED_TOTAL_CHAPTERS,
-    `Expected total chapter count ${EXPECTED_TOTAL_CHAPTERS}, got ${totalCapitulos}.`,
+    totalCapitulos === expectedTotalChapters,
+    `Expected total chapter count ${expectedTotalChapters}, got ${totalCapitulos}.`,
   );
 
   console.info(`  Selector manifest: ${manifest.versions.length} versions, ${totalCapitulos} total chapters.`);

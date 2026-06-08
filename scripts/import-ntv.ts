@@ -10,12 +10,13 @@ import { parseBblx } from '../src/importers/bblx';
 const bblxPath = path.resolve('sources', NTV_SOURCE.slug, NTV_SOURCE.bblxFile);
 
 export async function importNtv() {
-  // Guard: source file must exist before parsing.
+  // Guard: skip gracefully if source file is not available (e.g. CI without local data).
   if (!existsSync(bblxPath)) {
-    throw new Error(
+    console.warn(
       `[import:ntv] Source file not found: ${bblxPath}\n` +
-        `Copy the NTV .bblx file from your e-Sword installation to sources/ntv/NTV.bblx.`,
+        `Skipping NTV import. Copy the .bblx file to sources/ntv/NTV.bblx to enable.`,
     );
+    return;
   }
 
   const { verses } = parseBblx(bblxPath);
