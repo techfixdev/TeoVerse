@@ -18,8 +18,16 @@
 ---
 
 <script>
-  import { $highlight, $colorActivo } from '@/stores/highlight';
+  import { $highlight, $colorActivo, CARD_MODE_KEY } from '@/stores/highlight';
   import type { HighlightMap } from '@/stores/highlight';
+
+  function activateCardMode(): void {
+    const html = document.documentElement;
+    if (!html.classList.contains('verso-modo-activo')) {
+      html.classList.add('verso-modo-activo');
+      localStorage.setItem(CARD_MODE_KEY, '"activo"');
+    }
+  }
 
   function attach() {
     const container = document.querySelector<HTMLElement>('main.module-lectura');
@@ -36,6 +44,9 @@
 
       const versoKey = card.dataset.verso;
       if (!versoKey) return;
+
+      // Activate card mode on first verse tap (persists permanently)
+      activateCardMode();
 
       const currentColor = $colorActivo.get();
       const currentMap = $highlight.get();

@@ -32,6 +32,7 @@ import '@fontsource/caveat/400.css';
 import '@fontsource/caveat/500.css';
 import BrandLogo from '@/components/brand/BrandLogo.astro';
 import FontSizeControl from '@/components/brand/FontSizeControl.astro';
+import ColorPicker from '@/components/brand/ColorPicker.astro';
 import { fontBootstrapScript } from '@/components/brand/fontBootstrap';
 import ReferenciaSeed from '@/components/workspace/ReferenciaSeed.astro';
 import TskClickProxy from '@/components/workspace/TskClickProxy.astro';
@@ -102,7 +103,10 @@ const {
     <header class="workspace-chrome sticky top-0 z-40 border-b border-brand-grisSuave/30 bg-white/90 backdrop-blur-sm dark:bg-[#0E1A1F]/90 dark:border-white/10">
       <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-2 sm:px-6">
         <BrandLogo />
-        <FontSizeControl />
+        <div class="flex items-center gap-2">
+          <FontSizeControl />
+          <ColorPicker />
+        </div>
 
         <nav class="flex items-center gap-4 text-sm font-medium text-brand-gris" aria-label="Navegación principal">
           <a class="rounded-sm transition hover:text-brand-cianDark focus-visible:text-brand-cianDark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-cianDark focus-visible:ring-offset-2" href="/">Inicio</a>

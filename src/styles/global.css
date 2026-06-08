@@ -641,6 +641,28 @@ html.verso-modo-activo .verso-card:hover {
 }
 
 /* ---------------------------------------------------------------------------
+ * Strong differentiation — diagonal stripe pattern for verses with Strong words.
+ * Scoped under html.verso-modo-activo (same as card styles).
+ * Uses color-mix with 6% cian tint — subtle in both light and dark modes.
+ * When a Strong verse is also highlighted, the ::before paint layer renders
+ * on top of the stripe pattern (z-index layering).
+ * --------------------------------------------------------------------------- */
+html.verso-modo-activo .verso-card--has-strong {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 4px,
+    color-mix(in srgb, var(--brand-cian) 6%, transparent) 4px,
+    color-mix(in srgb, var(--brand-cian) 6%, transparent) 8px
+  );
+}
+
+/* Color picker visibility — hidden until card mode activates */
+html:not(.verso-modo-activo) .color-picker {
+  display: none;
+}
+
+/* ---------------------------------------------------------------------------
  * Reduced motion — respect OS-level preference.
  * Uses 0.01ms instead of 0s to keep animationend events firing.
  * --------------------------------------------------------------------------- */

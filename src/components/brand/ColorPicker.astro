@@ -1,0 +1,89 @@
+---
+/**
+ * ColorPicker — user-facing highlight color selector.
+ *
+ * Renders an inline-flex row of 6 color swatches (24px circles). The active
+ * color has a ring indicator. Reads and writes `$colorActivo` persistentJSON
+ * store; HighlightClickProxy reads the store on each verse tap.
+ *
+ * Visibility: hidden until card mode activates (html.verso-modo-activo).
+ * The CSS rule `html:not(.verso-modo-activo) .color-picker { display: none }`
+ * handles this without JS — no FOUC, no hydration flash.
+ *
+ * Placed in the layout header bar alongside FontSizeControl.
+ */
+import { COLORS } from '@/stores/highlight';
+import type { ColorId } from '@/stores/highlight';
+
+// Color display mapping — Tailwind highlight tokens from tailwind.config.mjs
+const swatchClasses: Record<ColorId, string> = {
+  amarillo: 'bg-highlight-amarillo',
+  verde:    'bg-highlight-verde',
+  rosa:     'bg-highlight-rosa',
+  azul:     'bg-highlight-azul',
+  naranja:  'bg-highlight-naranja',
+  violeta:  'bg-highlight-violeta',
+};
+---
+
+<div
+  role="group"
+  aria-label="Selector de color de resaltado"
+  class="color-picker inline-flex items-center gap-1.5 rounded-lg border border-brand-grisSuave/30 bg-white/60 px-2 py-1.5 dark:bg-[#0E1A1F]/60"
+>
+  {COLORS.map((color) => (
+    <button
+      type="button"
+      data-color-swatch={color}
+      class={`color-swatch h-6 w-6 rounded-full border border-brand-grisSuave/20 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-cianDark focus-visible:ring-offset-1 ${swatchClasses[color]}`}
+      aria-label={`Color ${color}`}
+      aria-pressed="false"
+    />
+  ))}
+</div>
+
+<script>
+  import { $colorActivo, COLORS } from '@/stores/highlight';
+  import type { ColorId } from '@/stores/highlight';
+
+  function updateActiveSwatch(activeColor: ColorId): void {
+    const swatches = document.querySelectorAll<HTMLButtonElement>('[data-color-swatch]');
+    for (const swatch of swatches) {
+      const color = swatch.dataset.colorSwatch as ColorId;
+      const isActive = color === activeColor;
+      swatch.setAttribute('aria-pressed', String(isActive));
+
+      if (isActive) {
+        swatch.classList.add('ring-2', 'ring-brand-cianDark', 'ring-offset-1');
+      } else {
+        swatch.classList.remove('ring-2', 'ring-brand-cianDark', 'ring-offset-1');
+      }
+    }
+  }
+
+  function setup(): void {
+    // Sync active swatch on initial load
+    const initialColor = $colorActivo.get();
+    updateActiveSwatch(initialColor);
+
+    // Listen for store changes (e.g., from another tab or programmatic set)
+    $colorActivo.subscribe((color) => {
+      updateActiveSwatch(color);
+    });
+
+    // Handle swatch clicks
+    const container = document.querySelector('.color-picker');
+    container?.addEventListener('click', (event) => {
+      const el = event.target as HTMLElement;
+      const swatch = el.closest('[data-color-swatch]') as HTMLElement | null;
+      if (!swatch) return;
+
+      const color = swatch.dataset.colorSwatch as ColorId;
+      if (color && COLORS.includes(color)) {
+        $colorActivo.set(color);
+      }
+    });
+  }
+
+  setup();
+</script>
