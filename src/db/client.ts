@@ -24,6 +24,8 @@ export const client = createClient({
 // SQLite deshabilita la verificación de claves foráneas por defecto.
 // Habilitarla garantiza que los ON DELETE CASCADE de versiculos_tokens funcionen
 // correctamente al re-importar versículos. Es un no-op para conexiones remotas (Turso).
-void client.execute('PRAGMA foreign_keys = ON').catch(() => {});
+void client.execute('PRAGMA foreign_keys = ON').catch((e) => {
+  console.warn('[db] no se pudo habilitar PRAGMA foreign_keys:', e);
+});
 
 export const db = drizzle(client, { schema });

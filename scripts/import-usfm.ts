@@ -84,7 +84,11 @@ export async function importUsfmBook(input: ImportUsfmBookInput): Promise<Import
 
   if (versiculosParaBorrar.length > 0) {
     const ids = versiculosParaBorrar.map((v) => v.id);
-    await db.delete(versiculosTokens).where(inArray(versiculosTokens.versiculoId, ids));
+    // Chunk the delete: un libro grande (p. ej. Salmos ~2.461 versículos) supera el
+    // límite de 999 parámetros de SQLite en una sola cláusula IN.
+    for (const idChunk of chunkArray(ids, 900)) {
+      await db.delete(versiculosTokens).where(inArray(versiculosTokens.versiculoId, idChunk));
+    }
   }
 
   // Delete existing data for this (recurso, libro) pair before re-inserting — ensures
