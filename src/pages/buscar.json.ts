@@ -1,9 +1,19 @@
 import type { APIRoute } from 'astro';
 import { listBibliaVersions, searchVersiculos } from '@/db/queries';
+import { isLocalFallback } from '@/db/client';
 
 export const prerender = false;
 
 export const GET: APIRoute = async ({ request }) => {
+  // Guard: en producción sin TURSO_CONNECTION_URL configurada, el endpoint no puede funcionar.
+  if (isLocalFallback && import.meta.env.PROD) {
+    console.error('TURSO_CONNECTION_URL is not configured in this deployment');
+    return new Response(JSON.stringify({ error: 'database_unavailable' }), {
+      status: 503,
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    });
+  }
+
   const url = new URL(request.url);
   const q = (url.searchParams.get('q') ?? '').trim();
   const versionesParam = url.searchParams.get('versiones') ?? '';
