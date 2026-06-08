@@ -21,6 +21,8 @@ runPnpmScript('import:sparvg');
 runPnpmScript('import:sparv1909');
 // import:mensaje parsea el HTML "El Mensaje" (Ríos de Vida); paráfrasis sin Strong.
 runPnpmScript('import:mensaje');
+// import:ntv parsea el .bblx de e-Sword "Nueva Traducción Viviente"; sin Strong.
+runPnpmScript('import:ntv');
 // import:tsk carga las referencias cruzadas TSK desde OpenBible.info (~340K filas).
 runPnpmScript('import:tsk');
 // db:seed-plan carga el plan de lectura diaria (depende de que libros ya exista).
