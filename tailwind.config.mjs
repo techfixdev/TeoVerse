@@ -12,6 +12,14 @@ export default {
           gris:      '#767676', // text on light bg — AA-compliant (4.54:1 on white)
           grisSuave: '#B7B7B7', // subtitles, lines, dividers, discrete backgrounds
         },
+        highlight: {
+          amarillo: 'var(--hl-amarillo)',
+          verde:    'var(--hl-verde)',
+          rosa:     'var(--hl-rosa)',
+          azul:     'var(--hl-azul)',
+          naranja:  'var(--hl-naranja)',
+          violeta:  'var(--hl-violeta)',
+        },
       },
       fontFamily: {
         // Georgia serif — verse body; do NOT replace with brand sans.
