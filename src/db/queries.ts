@@ -115,6 +115,7 @@ export const VERSION_ABBREVIATURES: Record<string, string> = {
   sparvg: 'RVG',
   spaRV1909: 'RVR1909',
   mensaje: 'MSG',
+  ntv: 'NTV',
 };
 
 type ChapterReference = {

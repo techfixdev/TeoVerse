@@ -19,6 +19,7 @@
     "import:sparvg": "tsx scripts/import-sparvg.ts",
     "import:sparv1909": "tsx scripts/import-sparv1909.ts",
     "import:mensaje": "tsx scripts/import-mensaje.ts",
+    "import:ntv": "tsx scripts/import-ntv.ts",
     "import:tsk": "tsx scripts/import-tsk.ts",
     "drop:fts": "tsx scripts/drop-fts.ts",
     "build:fts": "tsx scripts/build-fts.ts",
