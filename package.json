@@ -35,7 +35,8 @@
     "verify:tokens": "tsx scripts/verify-tokens-endpoint.ts",
     "verify:strong": "tsx scripts/verify-strong-endpoint.ts",
     "verify:pr1-foundation": "tsx scripts/verify-pr1-foundation.ts",
-    "verify:pr2-interaction": "tsx scripts/verify-pr2-interaction.ts"
+    "verify:pr2-interaction": "tsx scripts/verify-pr2-interaction.ts",
+    "verify:pr3-polish": "tsx scripts/verify-pr3-polish.ts"
   },
   "dependencies": {
     "@astrojs/tailwind": "^6.0.2",

@@ -176,7 +176,10 @@ for (const run of verseRuns) {
       {verseRuns.map((run) => (
         <li
           id={run.isMultiVerse ? undefined : `v${run.startVerse}`}
-          class="verso-card grid grid-cols-[auto_1fr] gap-3"
+          class:list={[
+            'verso-card grid grid-cols-[auto_1fr] gap-3',
+            { 'verso-card--has-strong': run.tokens?.some((t) => t.codigoStrong !== null) },
+          ]}
           data-verso={`${libro}:${capitulo}:${run.startVerse}`}
           data-has-strong={String(run.tokens?.some((t) => t.codigoStrong !== null) ?? false)}
         >
