@@ -48,7 +48,7 @@ const CANONICAL_CHAPTER_COUNTS: Record<string, number> = {
   '1-juan': 5, '2-juan': 1, '3-juan': 1, judas: 1, apocalipsis: 22,
 };
 
-const CANONICAL_VERSION_SLUGS = ['spapddpt', 'sparvg', 'spaRV1909', 'mensaje'] as const;
+const CANONICAL_VERSION_SLUGS = ['spapddpt', 'sparvg', 'spaRV1909', 'mensaje', 'ntv'] as const;
 const EXPECTED_TOTAL_CHAPTERS = CANONICAL_VERSION_SLUGS.length *
   Object.values(CANONICAL_CHAPTER_COUNTS).reduce((sum, count) => sum + count, 0);
 const MAX_GZIPPED_BYTES = 80 * 1024;
