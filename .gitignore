@@ -13,6 +13,7 @@ package-lock.json
 fuentes-aprobadas/
 sources/
 !sources/tsk/
+!sources/ntv/
 
 # Local SDD tooling state (machine-specific absolute paths + cache)
 .atl/
