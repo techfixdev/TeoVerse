@@ -6,7 +6,7 @@
   "packageManager": "pnpm@11.1.1",
   "scripts": {
     "dev": "astro dev",
-    "build": "pnpm prepare:build-data && pnpm build:astro",
+    "build": "node scripts/build.mjs",
     "build:astro": "astro check && astro build",
     "preview": "astro preview",
     "astro": "astro",
