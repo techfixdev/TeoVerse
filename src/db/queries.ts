@@ -1,4 +1,5 @@
 import { and, asc, between, eq, sql } from 'drizzle-orm';
+import { aliasedTable } from 'drizzle-orm/alias';
 import { client, db } from './client';
 import { recursos, recursoLibros, libros, versiculos, versiculosTokens, diccionarioEntradas, tskReferencias, planLectura } from './schema';
 
@@ -630,6 +631,8 @@ export type TskRefTarget = {
   capitulo: number;
   versiculo_start: number;
   versiculo_end: number;
+  /** Target verse text from spapddpt (undefined when the verse is not found in that version) */
+  refTexto?: string;
 };
 
 export type TskReference = {
@@ -642,7 +645,9 @@ export type TskReference = {
  * grouped by source verse, ordered by target canon order + chapter + verse.
  *
  * Joins tsk_referencias with libros (twice: source + target) to resolve
- * book slugs and names. Runs at build time during getStaticPaths().
+ * book slugs and names. LEFT JOINs versiculos (spapddpt) to attach the
+ * target verse text (refTexto) for display in cross-ref verse cards.
+ * Runs at build time during getStaticPaths().
  *
  * @param libroSlug - Source book slug (e.g., "genesis")
  * @param capitulo  - Source chapter number
@@ -661,6 +666,15 @@ export async function listTskForChapter(
 
   if (!srcLibro) return [];
 
+  // Resolve spapddpt recurso ID for the target verse text LEFT JOIN
+  const spapddptRecurso = await db
+    .select({ id: recursos.id })
+    .from(recursos)
+    .where(eq(recursos.slug, 'spapddpt'))
+    .get();
+
+  const refVersiculos = aliasedTable(versiculos, 'ref_versiculos');
+
   const rows = await db
     .select({
       versiculo: tskReferencias.versiculo,
@@ -669,9 +683,21 @@ export async function listTskForChapter(
       refCapitulo: tskReferencias.refCapitulo,
       refVersiculoStart: tskReferencias.refVersiculoStart,
       refVersiculoEnd: tskReferencias.refVersiculoEnd,
+      refTexto: refVersiculos.texto,
     })
     .from(tskReferencias)
     .innerJoin(libros, eq(tskReferencias.refLibroId, libros.id))
+    .leftJoin(
+      refVersiculos,
+      spapddptRecurso
+        ? and(
+            eq(refVersiculos.recursoId, spapddptRecurso.id),
+            eq(refVersiculos.libroId, tskReferencias.refLibroId),
+            eq(refVersiculos.capitulo, tskReferencias.refCapitulo),
+            eq(refVersiculos.versiculo, tskReferencias.refVersiculoStart),
+          )
+        : sql`0`,
+    )
     .where(
       and(
         eq(tskReferencias.libroId, srcLibro.id),
@@ -698,6 +724,7 @@ export async function listTskForChapter(
       capitulo: row.refCapitulo,
       versiculo_start: row.refVersiculoStart,
       versiculo_end: row.refVersiculoEnd,
+      refTexto: row.refTexto ?? undefined,
     });
   }
 
