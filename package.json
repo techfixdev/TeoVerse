@@ -24,7 +24,7 @@
     "drop:fts": "tsx scripts/drop-fts.ts",
     "build:fts": "tsx scripts/build-fts.ts",
     "prepare:build-data": "tsx scripts/prepare-build-data.ts",
-    "verify": "pnpm prepare:build-data && pnpm verify:bible-queries && pnpm verify:search-fts && pnpm verify:daily-readings && pnpm verify:selector-manifest && pnpm verify:usfm-parser && pnpm verify:usfm-importer && pnpm verify:usfm-interlinear && pnpm verify:tokens && pnpm verify:strong && pnpm build:astro",
+    "verify": "pnpm prepare:build-data && pnpm verify:bible-queries && pnpm verify:search-fts && pnpm verify:daily-readings && pnpm verify:selector-manifest && pnpm verify:usfm-parser && pnpm verify:usfm-importer && pnpm verify:usfm-interlinear && pnpm verify:tokens && pnpm verify:strong && pnpm verify:verse-card && pnpm build:astro",
     "verify:bible-queries": "tsx scripts/verify-bible-queries.ts",
     "verify:search-fts": "tsx scripts/verify-search-fts.ts",
     "verify:daily-readings": "tsx scripts/verify-daily-readings.ts",
@@ -34,6 +34,7 @@
     "verify:usfm-interlinear": "tsx scripts/verify-usfm-interlinear.ts",
     "verify:tokens": "tsx scripts/verify-tokens-endpoint.ts",
     "verify:strong": "tsx scripts/verify-strong-endpoint.ts",
+    "verify:verse-card": "tsx scripts/verify-verse-card.ts",
     "verify:pr1-foundation": "tsx scripts/verify-pr1-foundation.ts",
     "verify:pr2-interaction": "tsx scripts/verify-pr2-interaction.ts",
     "verify:pr3-polish": "tsx scripts/verify-pr3-polish.ts"
