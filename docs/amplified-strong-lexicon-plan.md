@@ -81,8 +81,10 @@ numbers inside those cards.
 ## PR plan (stacked-to-main) & status
 
 - **PR1 — Cross-reference verse cards** (`feat/crossref-verse-cards`): VerseCard extraction,
-  `versiculo=0` fix, TSK target verse cards. **STATUS: code WRITTEN in working tree, NOT yet
-  verified/committed** (as of 2026-06-09). Files: `scripts/verify-verse-card.ts`,
+  `versiculo=0` fix, TSK target verse cards. **STATUS: COMMITTED & PUSHED** (5 commits,
+  `650aaeb..aa77c02`, as of 2026-06-09). `pnpm verify` was started on the CarlosCarabajal
+  machine but the session ended before it finished — **re-run `pnpm verify` to confirm
+  green before opening the PR**. Files: `scripts/verify-verse-card.ts`,
   `src/components/biblia/VerseCard.astro`, `[capitulo].astro`, `TskClickProxy.astro`,
   `src/db/queries.ts`, `TskPanel.astro`, `package.json`.
 - **PR2 — Spanish Vine + Strong-esp lexicon** (`feat/spanish-strong-lexicon`): rtf.ts,
@@ -105,9 +107,11 @@ Review workload forecast: ~1,100–1,400 changed lines → chained PRs (confirme
 4. If Engram is available, the full context is under project `teoverse`, topic keys:
    `sdd/amplified-strong-lexicon/{explore,proposal,spec,design,tasks}` +
    `/lexicon-language-decision`, `/vine-source`, `/strong-esp-source`.
-5. Resume: finish PR1 (verify + commit), then PR2 (start with Strong-esp full-coverage
-   import), then judgment-day on the full diff, then push + open the stacked PRs, then
-   load the licensing/attribution document.
+5. Resume: re-run `pnpm verify` for PR1 (code already committed/pushed), then PR2
+   (start with Strong-esp full-coverage import — **blocked until the `.dctx` files are
+   copied; they are NOT present on the CarlosCarabajal machine as of 2026-06-09**), then
+   judgment-day on the full diff, then push + open the stacked PRs, then load the
+   licensing/attribution document.
 
 ## Session config (cached)
 
