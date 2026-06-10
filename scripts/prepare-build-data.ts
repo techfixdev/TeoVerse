@@ -25,6 +25,8 @@ runPnpmScript('import:mensaje');
 runPnpmScript('import:ntv');
 // import:tsk carga las referencias cruzadas TSK desde OpenBible.info (~340K filas).
 runPnpmScript('import:tsk');
+// import:vine carga el Diccionario Expositivo Vine (AT+NT) como recurso vine-es.
+runPnpmScript('import:vine');
 // db:seed-plan carga el plan de lectura diaria (depende de que libros ya exista).
 runPnpmScript('db:seed-plan');
 // build:fts MUST run last — importers DELETE+reinsert versiculos, so rowids are
