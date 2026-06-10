@@ -22,7 +22,7 @@ import { rtfToHtml } from '../src/importers/rtf';
 import { extractStrongCodes } from '../src/importers/lexicon';
 import type { CanonicalLexiconEntry } from '../src/importers/lexicon';
 
-const sourceDir = path.resolve('sources', VINE_SOURCE.slug);
+const sourceDir = path.resolve('sources', VINE_SOURCE.sourceDir);
 
 function resolveSourceFile(filename: string): string {
   return path.join(sourceDir, filename);

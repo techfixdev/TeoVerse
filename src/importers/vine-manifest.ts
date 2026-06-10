@@ -6,8 +6,9 @@
  */
 import type { LexiconSource } from './lexicon';
 
-export const VINE_SOURCE: LexiconSource = {
+export const VINE_SOURCE: LexiconSource & { sourceDir: string } = {
   slug: 'vine-es',
+  sourceDir: 'vine',
   nombre: 'Diccionario Expositivo Vine',
   idioma: 'es',
   licencia:

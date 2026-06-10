@@ -38,21 +38,21 @@ async function verifyVineLexicon(): Promise<void> {
   console.info(`  Vine entries: ${totalEntries}`);
 
   // 3. Multi-code article: one article → multiple rows for same definicion
-  //    H430 (Elohim/Dios) is a well-known Vine entry
-  const h430Entries = await getEntradasParaCodigo('H430');
-  const vineH430 = h430Entries.filter((e) => e.lexiconSlug === 'vine-es');
-  assert(vineH430.length >= 1, `Expected at least 1 vine-es entry for H430, got ${vineH430.length}.`);
-  console.info(`  H430 vine-es entries: ${vineH430.length}`);
+  //    H1 (PADRE) is a well-known Vine entry
+  const h1Entries = await getEntradasParaCodigo('H1');
+  const vineH1 = h1Entries.filter((e) => e.lexiconSlug === 'vine-es');
+  assert(vineH1.length >= 1, `Expected at least 1 vine-es entry for H1, got ${vineH1.length}.`);
+  console.info(`  H1 vine-es entries: ${vineH1.length}`);
 
   // 4. No residual RTF in definitions
-  for (const entry of vineH430) {
+  for (const entry of vineH1) {
     assert(
       !entry.definicion.includes('\\'),
-      `Residual RTF backslash in H430 definition: ${entry.definicion.slice(0, 100)}`,
+      `Residual RTF backslash in H1 definition: ${entry.definicion.slice(0, 100)}`,
     );
     assert(
       !entry.definicion.includes('{\\'),
-      `Residual RTF brace group in H430 definition: ${entry.definicion.slice(0, 100)}`,
+      `Residual RTF brace group in H1 definition: ${entry.definicion.slice(0, 100)}`,
     );
   }
 
@@ -60,8 +60,8 @@ async function verifyVineLexicon(): Promise<void> {
   const allCodes = await listAllLexiconCodes();
   assert(allCodes.length > 0, 'Expected listAllLexiconCodes() to return codes.');
   assert(
-    allCodes.includes('H430'),
-    `Expected H430 in listAllLexiconCodes(), got ${allCodes.length} codes.`,
+    allCodes.includes('H1'),
+    `Expected H1 in listAllLexiconCodes(), got ${allCodes.length} codes.`,
   );
   console.info(`  Distinct lexicon codes: ${allCodes.length}`);
 
