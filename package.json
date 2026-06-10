@@ -21,6 +21,7 @@
     "import:mensaje": "tsx scripts/import-mensaje.ts",
     "import:ntv": "tsx scripts/import-ntv.ts",
     "import:tsk": "tsx scripts/import-tsk.ts",
+    "import:vine": "tsx scripts/import-vine.ts",
     "drop:fts": "tsx scripts/drop-fts.ts",
     "build:fts": "tsx scripts/build-fts.ts",
     "prepare:build-data": "tsx scripts/prepare-build-data.ts",
