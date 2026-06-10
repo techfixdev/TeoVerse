@@ -502,6 +502,58 @@ export async function listBibleAttributions(): Promise<BibleAttribution[]> {
 }
 
 // ---------------------------------------------------------------------------
+// Multi-Lexicon Aggregate Read
+// ---------------------------------------------------------------------------
+
+export type LexiconEntry = {
+  lexiconSlug: string;
+  lexiconNombre: string;
+  lema: string;
+  definicion: string;
+};
+
+/**
+ * getEntradasParaCodigo — aggregate lexicon entries across all dictionary resources.
+ *
+ * Returns all entries for a given Strong code from every recurso with
+ * tipo='diccionario', ordered by recursos.id (stable insertion order).
+ * Missing codes return [] (no throw).
+ */
+export async function getEntradasParaCodigo(codigoStrong: string): Promise<LexiconEntry[]> {
+  const rows = await db
+    .select({
+      lexiconSlug: recursos.slug,
+      lexiconNombre: recursos.nombre,
+      lema: diccionarioEntradas.lema,
+      definicion: diccionarioEntradas.definicion,
+    })
+    .from(diccionarioEntradas)
+    .innerJoin(recursos, eq(diccionarioEntradas.recursoId, recursos.id))
+    .where(and(eq(recursos.tipo, 'diccionario'), eq(diccionarioEntradas.codigoStrong, codigoStrong)))
+    .orderBy(asc(recursos.id));
+
+  return rows;
+}
+
+/**
+ * listAllLexiconCodes — distinct Strong codes across all dictionary resources.
+ *
+ * Used by the aggregate endpoint's getStaticPaths to enumerate all codes
+ * that need a static JSON file.
+ */
+export async function listAllLexiconCodes(): Promise<string[]> {
+  const rows = await db
+    .select({ codigo: diccionarioEntradas.codigoStrong })
+    .from(diccionarioEntradas)
+    .innerJoin(recursos, eq(diccionarioEntradas.recursoId, recursos.id))
+    .where(eq(recursos.tipo, 'diccionario'))
+    .groupBy(diccionarioEntradas.codigoStrong)
+    .orderBy(asc(diccionarioEntradas.codigoStrong));
+
+  return rows.map((row) => row.codigo);
+}
+
+// ---------------------------------------------------------------------------
 // FTS5 Search (added by search-version-selection)
 // ---------------------------------------------------------------------------
 
