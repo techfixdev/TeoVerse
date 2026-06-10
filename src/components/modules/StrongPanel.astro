@@ -7,14 +7,19 @@
  *   1. Calls `actualizarModulo('strong', { habilitado: true, modo: 'normal' })`
  *      to open the panel via $workspace (sets html.ws-strong-open via bootstrap
  *      CSS classes on next interaction).
- *   2. Fetches `/datos/strong/{lexiconSlug}/{codigoStrong}.json`.
- *   3. Renders: clicked `palabra`, `codigoStrong` (always — survives 404/D7),
- *      and on 200 → `lema` + `definicion`.
+ *   2. Fetches `/datos/strong/{codigoStrong}.json` (aggregate endpoint).
+ *   3. Renders: clicked `palabra`, `codigoStrong` (always — survives 404),
+ *      and on 200 → a LIST of lexicon entries (one block per resource).
+ *
+ * Multi-lexicon rendering:
+ *   - vine-es: trusted minimal HTML injected (RTF whitelist guarantees safety)
+ *   - strong-es: plain text escaped (legacy seed entries)
+ *   - Each entry shows: lexicon heading + lema + definicion
  *
  * States:
  *   - Loading: spinner / "Buscando…"
- *   - Loaded (200): code + palabra + lema + definicion
- *   - Empty (404): code + palabra + "Sin definición para este código en el léxico activo"
+ *   - Loaded (200): code + palabra + lexicon entry list
+ *   - Empty (404): code + palabra + "Sin definición para este código"
  *   - Error: "No se pudo cargar el léxico." with retry button
  *   - Closed (modo: 'cerrado'): panel element hidden via CSS (ws-strong-closed)
  *
@@ -23,6 +28,7 @@
  *
  * The <script> runs on parse; no client:* directive needed (.astro island pattern).
  */
+import { VINE_SOURCE } from '@/importers/vine-manifest';
 ---
 
 <div id="strong-panel" class="strong-panel" role="complementary" aria-label="Diccionario Strong">
@@ -47,12 +53,18 @@
     <p class="strong-panel__idle">Haz clic en una palabra subrayada para ver su definición.</p>
   </div>
 
+  {/* Attribution footer — always visible */}
+  <div class="strong-panel__attribution">
+    <small>{VINE_SOURCE.attribution}</small>
+  </div>
+
 </div>
 
 <script>
   import { $senalStrong } from '@/stores/referencia';
   import { actualizarModulo } from '@/stores/workspace';
-  import { fetchEntrada } from '@/modules/strong/fetchEntrada';
+  import { fetchEntradas } from '@/modules/strong/fetchEntrada';
+  import type { LexiconEntryData } from '@/modules/strong/fetchEntrada';
 
   const body    = document.getElementById('strong-panel-body');
   const closeBtn = document.getElementById('strong-panel-close');
@@ -62,7 +74,6 @@
   // -------------------------------------------------------------------------
 
   function openPanel() {
-    // Immediately reflect in DOM for CSS (ws-strong-open/closed classes on <html>)
     document.documentElement.classList.add('ws-strong-open');
     document.documentElement.classList.remove('ws-strong-closed');
     actualizarModulo('strong', { habilitado: true, modo: 'normal' });
@@ -87,13 +98,35 @@
     `;
   }
 
-  function renderEntry(palabra: string, codigo: string, lema: string, definicion: string) {
+  /**
+   * Render a list of lexicon entries. Each entry shows:
+   *   - Lexicon heading (nombre)
+   *   - Lema (heading word)
+   *   - Definicion (vine-es = trusted HTML; others = escaped)
+   */
+  function renderEntries(palabra: string, codigo: string, lexicons: LexiconEntryData[]) {
     if (!body) return;
+
+    let entriesHtml = '';
+    for (const entry of lexicons) {
+      const isVine = entry.lexiconSlug === 'vine-es';
+      // vine-es: trusted minimal HTML from RTF whitelist parser
+      // strong-es and others: escape for safety
+      const defHtml = isVine ? entry.definicion : escHtml(entry.definicion);
+
+      entriesHtml += `
+        <div class="strong-panel__lexicon-entry" data-lexicon="${escHtml(entry.lexiconSlug)}">
+          <h4 class="strong-panel__lexicon-name">${escHtml(entry.lexiconNombre)}</h4>
+          <p class="strong-panel__lema">${escHtml(entry.lema)}</p>
+          <div class="strong-panel__definicion">${defHtml}</div>
+        </div>
+      `;
+    }
+
     body.innerHTML = `
       <p class="strong-panel__codigo">${escHtml(codigo)}</p>
       <p class="strong-panel__palabra">${escHtml(palabra)}</p>
-      <p class="strong-panel__lema">${escHtml(lema)}</p>
-      <p class="strong-panel__definicion">${escHtml(definicion)}</p>
+      <div class="strong-panel__entries">${entriesHtml}</div>
     `;
   }
 
@@ -131,13 +164,13 @@
     openPanel();
 
     try {
-      const entrada = await fetchEntrada(codigoStrong);
+      const lexicons = await fetchEntradas(codigoStrong);
       if (generation !== loadGeneration) return;
 
-      if (entrada === null) {
+      if (lexicons.length === 0) {
         renderEmpty(palabra, codigoStrong);
       } else {
-        renderEntry(palabra, codigoStrong, entrada.lema, entrada.definicion);
+        renderEntries(palabra, codigoStrong, lexicons);
       }
     } catch {
       if (generation !== loadGeneration) return;
