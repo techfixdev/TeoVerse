@@ -1,0 +1,89 @@
+---
+/**
+ * VerseCard — renders a single verse run as an interactive card.
+ *
+ * Extracted from the inline <li class="verso-card"> block in [capitulo].astro.
+ * Byte-stable output: tokens joined by spaces in posicion order reconstruct
+ * versiculo.texto exactly. Hidden sr-only anchors preserve #v{n} deep links
+ * for multi-verse runs. The tsk-marker button is rendered only when tskRefs
+ * is non-empty.
+ */
+import type { ChapterToken, TskRefTarget } from '@/db/queries';
+
+interface Props {
+  /** Display label — e.g. "1", "1-3" */
+  label: string;
+  /** id attribute for the <li> — undefined for multi-verse runs (they use hidden sr-only spans) */
+  anchorId?: string;
+  /** Verse numbers rendered as hidden sr-only anchors (multi-verse runs only) */
+  hiddenAnchors?: number[];
+  /** data-verso attribute value — libro:capitulo:startVerse */
+  dataVerso: string;
+  /** Tokenized word list — present only for single-verse runs */
+  tokens?: ChapterToken[];
+  /** Fallback plain text for runs without tokens */
+  text: string;
+  /** TSK cross-reference targets for this verse run */
+  tskRefs?: TskRefTarget[];
+  /** Whether any token in this run carries a Strong code */
+  hasStrong: boolean;
+  /** aria-label for the tsk-marker button (includes book/chapter context for AT). Falls back to generic label when omitted. */
+  tskMarkerAriaLabel?: string;
+}
+
+const { label, anchorId, hiddenAnchors, dataVerso, tokens, text, tskRefs = [], hasStrong, tskMarkerAriaLabel } = Astro.props;
+---
+
+<li
+  id={anchorId}
+  class:list={[
+    'verso-card grid grid-cols-[auto_1fr] gap-3',
+    { 'verso-card--has-strong': hasStrong },
+  ]}
+  data-verso={dataVerso}
+  data-has-strong={String(hasStrong)}
+>
+  <span class="pt-1 text-sm font-bold text-brand-cianDark whitespace-nowrap">
+    {label}
+  </span>
+  <span>
+    {/* Hidden anchors for multi-verse runs (preserves #v{n} deep links).
+        Single-verse runs use the li id as anchor. */}
+    {hiddenAnchors && hiddenAnchors.length > 0
+      ? hiddenAnchors.map((vn) => (
+          <span id={`v${vn}`} class="sr-only" aria-hidden="true"></span>
+        ))
+      : null}
+
+    {tokens && tokens.length > 0 ? (
+      tokens.map((token, index) => (
+        <>
+          {token.codigoStrong ? (
+            <button
+              class="palabra-strong"
+              type="button"
+              data-strong={token.codigoStrong}
+              data-palabra={token.palabra}
+              aria-label={`${token.palabra} — código Strong ${token.codigoStrong}`}
+            >{token.palabra}</button>
+          ) : (
+            <span>{token.palabra}</span>
+          )}
+          {index < tokens!.length - 1 ? ' ' : ''}
+        </>
+      ))
+    ) : (
+      text
+    )}
+
+    {/* TSK cross-reference superscript marker (union for verse runs) */}
+    {tskRefs.length > 0 && (
+      <button
+        class="tsk-marker"
+        type="button"
+        data-tsk-refs={JSON.stringify(tskRefs)}
+        aria-label={tskMarkerAriaLabel ?? `${tskRefs.length} referencias cruzadas`}
+      >{tskRefs.length}</button>
+    )}
+  </span>
+</li>

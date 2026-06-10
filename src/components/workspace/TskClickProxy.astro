@@ -33,8 +33,9 @@
 
       try {
         const referencias = JSON.parse(raw);
-        const versiculoText = target.closest('li[id^="v"]')?.id.replace('v', '');
-        const versiculo = versiculoText ? parseInt(versiculoText, 10) : 0;
+        // data-verso="libro:capitulo:startVerse" — present on all verse cards (single and multi-verse).
+        const versoData = (target.closest('[data-verso]') as HTMLElement | null)?.dataset.verso;
+        const versiculo = versoData ? parseInt(versoData.split(':')[2] ?? '0', 10) : 0;
 
         $senalTsk.set({ versiculo, referencias });
 

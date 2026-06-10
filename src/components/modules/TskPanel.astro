@@ -77,6 +77,31 @@
   // Render helpers
   // -------------------------------------------------------------------------
 
+  /**
+   * buildRefItem — renders a single cross-reference as either a verse card
+   * (when refTexto is available) or a plain link. Uses .verso-card CSS classes
+   * so the cross-ref preview shares the same visual treatment as reading cards.
+   * No Strong tokens, no tsk-marker — display-only snapshot.
+   */
+  function buildRefItem(ref: SenalTsk['referencias'][number], version: string): string {
+    const label = ref.versiculo_start === ref.versiculo_end
+      ? `${ref.libro} ${ref.capitulo}:${ref.versiculo_start}`
+      : `${ref.libro} ${ref.capitulo}:${ref.versiculo_start}-${ref.versiculo_end}`;
+
+    const href = `/biblia/${version}/${ref.libro_slug}/${ref.capitulo}/#v${ref.versiculo_start}`;
+
+    if (ref.refTexto) {
+      // Lightweight verse card reusing .verso-card grid layout — no Strong tokens, no tsk-marker.
+      return `
+        <a class="tsk-ref-card verso-card grid grid-cols-[auto_1fr] gap-3 no-underline" href="${escAttr(href)}">
+          <span class="pt-1 text-sm font-bold text-brand-cianDark whitespace-nowrap">${escHtml(label)}</span>
+          <span class="text-sm leading-6">${escHtml(ref.refTexto)}</span>
+        </a>`;
+    }
+
+    return `<a class="tsk-reference" href="${escAttr(href)}">${escHtml(label)}</a>`;
+  }
+
   function renderReferences(senal: SenalTsk) {
     if (!body) return;
 
@@ -86,27 +111,13 @@
     const visible = refs.slice(0, limit);
     const hidden = refs.slice(limit);
 
-    const links = visible.map((ref) => {
-      const label = ref.versiculo_start === ref.versiculo_end
-        ? `${ref.libro} ${ref.capitulo}:${ref.versiculo_start}`
-        : `${ref.libro} ${ref.capitulo}:${ref.versiculo_start}-${ref.versiculo_end}`;
-
-      const href = `/biblia/${version}/${ref.libro_slug}/${ref.capitulo}/#v${ref.versiculo_start}`;
-
-      return `<a class="tsk-reference" href="${escAttr(href)}">${escHtml(label)}</a>`;
-    }).join('');
+    const items = visible.map((ref) => buildRefItem(ref, version)).join('');
 
     const hasMore = hidden.length > 0 ? `
       <details class="tsk-panel__more">
         <summary class="tsk-panel__more-toggle">Mostrar todas (${hidden.length} más)</summary>
         <div class="tsk-panel__more-list">
-          ${hidden.map((ref) => {
-            const label = ref.versiculo_start === ref.versiculo_end
-              ? `${ref.libro} ${ref.capitulo}:${ref.versiculo_start}`
-              : `${ref.libro} ${ref.capitulo}:${ref.versiculo_start}-${ref.versiculo_end}`;
-            const href = `/biblia/${version}/${ref.libro_slug}/${ref.capitulo}/#v${ref.versiculo_start}`;
-            return `<a class="tsk-reference" href="${escAttr(href)}">${escHtml(label)}</a>`;
-          }).join('')}
+          ${hidden.map((ref) => buildRefItem(ref, version)).join('')}
         </div>
       </details>
     ` : '';
@@ -115,7 +126,7 @@
       <p class="tsk-panel__verse-ref">
         ${escHtml($referencia.get()?.libro ?? '')} ${senal.versiculo}
       </p>
-      <div class="tsk-panel__refs">${links}</div>
+      <div class="tsk-panel__refs">${items}</div>
       ${hasMore}
     `;
   }

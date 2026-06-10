@@ -2,6 +2,7 @@
 import WorkspaceLayout from '@/layouts/WorkspaceLayout.astro';
 import StrongClickProxy from '@/components/workspace/StrongClickProxy.astro';
 import StrongPanel from '@/components/modules/StrongPanel.astro';
+import VerseCard from '@/components/biblia/VerseCard.astro';
 import { getChapter, getChapterNavigation, listStaticChapterPaths, listTokensForChapter, listTskForChapter } from '@/db/queries';
 import type { ChapterToken, TskRefTarget } from '@/db/queries';
 
@@ -174,59 +175,17 @@ for (const run of verseRuns) {
         Invariant: tokens joined by spaces in posicion order = versiculo.texto byte-for-byte. */}
     <ol class="mt-6 space-y-5 font-reading text-lg leading-8 text-[color:var(--brand-text)]">
       {verseRuns.map((run) => (
-        <li
-          id={run.isMultiVerse ? undefined : `v${run.startVerse}`}
-          class:list={[
-            'verso-card grid grid-cols-[auto_1fr] gap-3',
-            { 'verso-card--has-strong': run.tokens?.some((t) => t.codigoStrong !== null) },
-          ]}
-          data-verso={`${libro}:${capitulo}:${run.startVerse}`}
-          data-has-strong={String(run.tokens?.some((t) => t.codigoStrong !== null) ?? false)}
-        >
-          <span class="pt-1 text-sm font-bold text-brand-cianDark whitespace-nowrap">
-            {run.label}
-          </span>
-          <span>
-            {/* Hidden anchors for multi-verse runs (preserves #v{n} deep links).
-                Single-verse runs use the li id as anchor. */}
-            {run.isMultiVerse
-              ? run.verseNumbers.map((vn) => (
-                  <span id={`v${vn}`} class="sr-only" aria-hidden="true"></span>
-                ))
-              : null}
-
-            {run.tokens && run.tokens.length > 0 ? (
-              run.tokens.map((token, index) => (
-                <>
-                  {token.codigoStrong ? (
-                    <button
-                      class="palabra-strong"
-                      type="button"
-                      data-strong={token.codigoStrong}
-                      data-palabra={token.palabra}
-                      aria-label={`${token.palabra} — código Strong ${token.codigoStrong}`}
-                    >{token.palabra}</button>
-                  ) : (
-                    <span>{token.palabra}</span>
-                  )}
-                  {index < run.tokens!.length - 1 ? ' ' : ''}
-                </>
-              ))
-            ) : (
-              run.text
-            )}
-
-            {/* TSK cross-reference superscript marker (union for verse runs) */}
-            {run.tskRefs.length > 0 && (
-              <button
-                class="tsk-marker"
-                type="button"
-                data-tsk-refs={JSON.stringify(run.tskRefs)}
-                aria-label={`${run.tskRefs.length} referencias cruzadas para ${chapter.libro.nombre} ${chapter.capitulo}:${run.label}`}
-              >{run.tskRefs.length}</button>
-            )}
-          </span>
-        </li>
+        <VerseCard
+          label={run.label}
+          anchorId={run.isMultiVerse ? undefined : `v${run.startVerse}`}
+          hiddenAnchors={run.isMultiVerse ? run.verseNumbers : undefined}
+          dataVerso={`${libro}:${capitulo}:${run.startVerse}`}
+          tokens={run.tokens}
+          text={run.text}
+          tskRefs={run.tskRefs}
+          hasStrong={run.tokens?.some((t) => t.codigoStrong !== null) ?? false}
+          tskMarkerAriaLabel={`${run.tskRefs.length} referencias cruzadas para ${chapter.libro.nombre} ${chapter.capitulo}:${run.label}`}
+        />
       ))}
     </ol>
 
